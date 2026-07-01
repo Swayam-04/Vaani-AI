@@ -88,6 +88,20 @@ export function usePipeline() {
       // Perform API call
       const response = await generateMissileReport(parsedData);
       
+      console.log("Backend Response:", response);
+      
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+      
+      if (!response?.generated_text || response.generated_text.length === 0) {
+        throw new Error("No text generated.");
+      }
+      
+      if (!response?.audio_file || response.audio_file.length === 0) {
+        throw new Error("Speech generation failed.");
+      }
+      
       setProgress(100);
 
       // Stop elapsed stopwatch
@@ -100,16 +114,16 @@ export function usePipeline() {
 
       // Format audio URL if present
       let generatedAudioUrl = null;
-      if (response.audio_file) {
+      if (response?.audio_file) {
         const audioPath = response.audio_file;
         generatedAudioUrl = audioPath.startsWith('http') ? audioPath : `${BASE_URL}/${audioPath}`;
       }
 
       // Finish loop
       setIsGenerating(false);
-      setDecodedText(response.generated_text);
+      setDecodedText(response?.generated_text);
       setAudioUrl(generatedAudioUrl);
-      setAudioStatus(response.audio_file ? 'Ready' : 'Waiting');
+      setAudioStatus(response?.audio_file ? 'Ready' : 'Waiting');
       setLlmStatus('Ready');
       setTtsStatus('Ready');
 
@@ -125,10 +139,14 @@ export function usePipeline() {
 
       setMetrics(combinedMetrics);
 
+      const textSnippet = (response?.generated_text && response.generated_text.length > 80)
+        ? response.generated_text.substring(0, 80) + '...'
+        : response?.generated_text;
+
       const finalizedClip = {
         id: `clip_${Date.now()}`,
-        text: response.generated_text.length > 80 ? response.generated_text.substring(0, 80) + '...' : response.generated_text,
-        fullText: response.generated_text,
+        text: textSnippet,
+        fullText: response?.generated_text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         audioUrl: generatedAudioUrl,
         metrics: combinedMetrics,

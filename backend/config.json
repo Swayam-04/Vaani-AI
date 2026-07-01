@@ -1,0 +1,23 @@
+{
+  "flask": {
+    "host": "127.0.0.1",
+    "port": 5000,
+    "debug": true
+  },
+  "ollama": {
+    "url": "http://127.0.0.1:11434",
+    "model": "llama3.2:3b",
+    "timeout_seconds": 120
+  },
+  "omnivoice": {
+    "url": "http://127.0.0.1:3900",
+    "voice": "alloy",
+    "engine": "omnivoice",
+    "timeout_seconds": 300,
+    "retries": 3
+  },
+  "paths": {
+    "log_dir": "logs",
+    "audio_dir": "static/audio"
+  }
+}

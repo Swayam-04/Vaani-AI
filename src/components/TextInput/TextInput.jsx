@@ -9,7 +9,7 @@ const MAX_CHARS = 5000;
 export default function TextInput({ text, onChangeText, onGenerate, onClear, onCopy, isLoading, disabled }) {
   const handleTextChange = (e) => {
     const val = e.target.value;
-    if (val.length <= MAX_CHARS) {
+    if (val?.length <= MAX_CHARS) {
       onChangeText(val);
     }
   };
@@ -35,8 +35,8 @@ export default function TextInput({ text, onChangeText, onGenerate, onClear, onC
           disabled={isLoading}
           className={styles.textarea}
         />
-        <div className={`${styles.charCounter} ${text.length >= MAX_CHARS ? styles.limitReached : ''}`}>
-          {text.length} / {MAX_CHARS}
+        <div className={`${styles.charCounter} ${(text?.length || 0) >= MAX_CHARS ? styles.limitReached : ''}`}>
+          {text?.length || 0} / {MAX_CHARS}
         </div>
       </div>
       

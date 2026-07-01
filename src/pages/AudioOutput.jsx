@@ -15,7 +15,7 @@ export default function AudioOutput({ settings }) {
   useEffect(() => {
     const data = getGenerationHistory();
     setHistory(data);
-    if (data.length > 0) {
+    if (data && data.length > 0) {
       setSelectedClip(data[0]); // default select the latest clip
     }
   }, []);
@@ -134,7 +134,7 @@ export default function AudioOutput({ settings }) {
         title={
           <div className={styles.tableCardHeader}>
             <span className="card-title">Session Audio Logs</span>
-            {history.length > 0 && (
+            {history && history.length > 0 && (
               <Button 
                 type="default" 
                 danger 
@@ -149,7 +149,7 @@ export default function AudioOutput({ settings }) {
         }
         className={styles.historyCard}
       >
-        {history.length > 0 ? (
+        {history && history.length > 0 ? (
           <Table 
             dataSource={history} 
             columns={columns} 

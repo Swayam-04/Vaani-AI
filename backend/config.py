@@ -1,8 +1,73 @@
 import os
+import json
+
+class ConfigManager:
+    """VAANI AI Config Manager"""
+    _config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    _config_data = {}
+
+    @classmethod
+    def load(cls):
+        if not os.path.exists(cls._config_path):
+            cls._create_default()
+        with open(cls._config_path, "r") as f:
+            cls._config_data = json.load(f)
+
+    @classmethod
+    def _create_default(cls):
+        default_config = {
+            "flask": {"host": "127.0.0.1", "port": 5000, "debug": True},
+            "ollama": {"url": "http://127.0.0.1:11434", "model": "llama3.2:3b", "timeout_seconds": 120},
+            "omnivoice": {"url": "http://127.0.0.1:3900", "voice": "alloy", "engine": "omnivoice", "timeout_seconds": 300, "retries": 3},
+            "paths": {"log_dir": "logs", "audio_dir": "static/audio"}
+        }
+        with open(cls._config_path, "w") as f:
+            json.dump(default_config, f, indent=2)
+        cls._config_data = default_config
+
+    @classmethod
+    def get(cls, section, key, default=None):
+        if not cls._config_data:
+            cls.load()
+        return cls._config_data.get(section, {}).get(key, default)
+
+    @classmethod
+    def set(cls, section, key, value):
+        if not cls._config_data:
+            cls.load()
+        if section not in cls._config_data:
+            cls._config_data[section] = {}
+        cls._config_data[section][key] = value
+        with open(cls._config_path, "w") as f:
+            json.dump(cls._config_data, f, indent=2)
 
 class Config:
-    """VAANI AI Backend Configuration Settings"""
-    DEBUG = True
-    OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-    OMNIVOICE_BASE_URL = os.environ.get("OMNIVOICE_BASE_URL", "http://127.0.0.1:3900")
-    MODEL_NAME = os.environ.get("MODEL_NAME", "llama3.2:3b")
+    @property
+    def DEBUG(self): return ConfigManager.get("flask", "debug", True)
+    
+    @property
+    def OLLAMA_BASE_URL(self): return ConfigManager.get("ollama", "url", "http://127.0.0.1:11434")
+    
+    @property
+    def MODEL_NAME(self): return ConfigManager.get("ollama", "model", "llama3.2:3b")
+    
+    @property
+    def OLLAMA_TIMEOUT(self): return ConfigManager.get("ollama", "timeout_seconds", 120)
+    
+    @property
+    def OMNIVOICE_BASE_URL(self): return ConfigManager.get("omnivoice", "url", "http://127.0.0.1:3900")
+    
+    @property
+    def OMNIVOICE_TIMEOUT(self): return ConfigManager.get("omnivoice", "timeout_seconds", 300)
+
+    @property
+    def OMNIVOICE_VOICE(self): return ConfigManager.get("omnivoice", "voice", "alloy")
+
+    @property
+    def OMNIVOICE_ENGINE(self): return ConfigManager.get("omnivoice", "engine", "omnivoice")
+
+    @property
+    def LOG_DIR(self): return os.path.join(os.path.dirname(__file__), ConfigManager.get("paths", "log_dir", "logs"))
+
+Config = Config()
+ConfigManager.load()
