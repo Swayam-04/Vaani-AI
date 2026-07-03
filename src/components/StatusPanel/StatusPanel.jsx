@@ -138,8 +138,8 @@ export default function StatusPanel({ isGenerating, progress, audioStatus, llmSt
             <code>{status.specs.ollamaVersion}</code>
           </div>
           <div className={styles.versionRow}>
-            <span>OmniVoice Studio</span>
-            <code>{status.specs.omniVoiceVersion}</code>
+            <span>Chatterbox TTS</span>
+            <code>{status.specs.chatterboxVersion}</code>
           </div>
         </div>
       </Card>

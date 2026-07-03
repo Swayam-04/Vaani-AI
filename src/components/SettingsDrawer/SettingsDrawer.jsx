@@ -6,8 +6,8 @@ import styles from './SettingsDrawer.module.css';
 export default function SettingsDrawer({ visible, onClose, settings, onUpdateSetting }) {
   const voiceOptions = [
     { value: 'default', label: 'Default System' },
-    { value: 'male', label: 'Male (OmniVoice)' },
-    { value: 'female', label: 'Female (OmniVoice)' },
+    { value: 'male', label: 'Male (Chatterbox)' },
+    { value: 'female', label: 'Female (Chatterbox)' },
     { value: 'neural', label: 'Neural Voice (DRDO Spec)' }
   ];
 

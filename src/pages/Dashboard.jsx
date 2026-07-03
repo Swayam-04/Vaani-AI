@@ -42,7 +42,7 @@ export default function Dashboard() {
           <Card className={styles.statsCard}>
             <Statistic
               title={<span className={styles.statsCardTitle}>Acoustic Engine</span>}
-              value="OmniVoice Studio"
+              value="Chatterbox TTS"
               prefix={<FiVolume2 className={styles.statsIcon} />}
               valueStyle={{ color: '#2ea44f', fontWeight: 'bold', fontSize: '1.4rem' }}
             />

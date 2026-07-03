@@ -86,15 +86,15 @@ export default function About() {
         <Panel 
           header={
             <span className={styles.panelHeader}>
-              <FiVolume2 className={styles.panelIcon} /> Speech Core: OmniVoice Studio Integration
+              <FiVolume2 className={styles.panelIcon} /> Speech Core: Chatterbox TTS Integration
             </span>
           } 
           key="2"
         >
           <div className={styles.panelContent}>
-            <p>To connect synthesized output to OmniVoice Studio:</p>
+            <p>To connect synthesized output to Chatterbox TTS:</p>
             <ol>
-              <li>Run the local OmniVoice synthesis daemon on port <code>5002</code> or execute via CLI.</li>
+              <li>Run the local Chatterbox synthesis daemon on port <code>5000</code> or execute via CLI.</li>
               <li>Send synthesized tokens to: <code>POST http://127.0.0.1:5002/api/tts</code></li>
               <li>Configure voice models (Default, Male, Female, Neural) mapping parameters:
                 <pre className={styles.code}>

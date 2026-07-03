@@ -132,7 +132,7 @@ export function usePipeline() {
       
       const combinedMetrics = {
         generatedTokens: tokenCount,
-        audioDuration: 0, // OmniVoice TTS currently bypassed per architecture plan
+        audioDuration: 0, // Chatterbox TTS currently bypassed per architecture plan
         voiceSelected: settings.voice || 'Default',
         processingTime: finalTotalTime
       };

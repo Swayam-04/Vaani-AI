@@ -9,7 +9,7 @@ import { handleServiceError } from './errorHandler';
  * Standard System Status Response Model
  * @typedef {Object} SystemStatus
  * @property {string} llm - Status of Ollama engine
- * @property {string} tts - Status of OmniVoice engine
+ * @property {string} tts - Status of Chatterbox engine
  * @property {string} processing - Overall pipeline process status
  * @property {string} health - System health indicator (Optimal, Degrading)
  * @property {Object} specs - Host hardware specs and check results
@@ -32,7 +32,7 @@ export async function getSystemStatus() {
         ramUsage: '2.4 GB / 16 GB',
         airgap: 'Verified Secure',
         ollamaVersion: 'v0.1.48',
-        omniVoiceVersion: 'v2.1.0'
+        chatterboxVersion: 'v1.0.0'
       }
     };
   } catch (error) {

@@ -111,7 +111,7 @@ export default function Generator({
       if (result && result.audioUrl) {
         notification.success({
           message: 'Speech generated successfully.',
-          description: 'The OmniVoice audio is ready to play.',
+          description: 'The Chatterbox audio is ready to play.',
           placement: 'bottomRight',
           duration: 5
         });
