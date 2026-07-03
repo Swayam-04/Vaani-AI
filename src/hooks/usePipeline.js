@@ -6,7 +6,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { generateMissileReport, parseInputToMissileData } from '../services/api';
 import { BASE_URL } from '../config/config';
-import { getGenerationHistory } from '../services/ttsService';
+import { getGenerationHistory, saveGenerationHistory } from '../services/ttsService';
 
 export function usePipeline() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -156,6 +156,9 @@ export function usePipeline() {
       // Push to session history
       const history = getGenerationHistory();
       history.unshift(finalizedClip);
+      
+      // NEW: Persist to localStorage
+      saveGenerationHistory();
 
       if (onAudioGenerated) {
         onAudioGenerated(finalizedClip);

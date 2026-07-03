@@ -4,7 +4,17 @@
  */
 
 // Local session history logs
+const HISTORY_KEY = 'vaani_generation_history';
+
 let generationHistory = [];
+try {
+  const stored = localStorage.getItem(HISTORY_KEY);
+  if (stored) {
+    generationHistory = JSON.parse(stored);
+  }
+} catch (e) {
+  console.error("Failed to load history", e);
+}
 
 /**
  * Retrieves list of completed generation clips
@@ -14,11 +24,20 @@ export function getGenerationHistory() {
   return generationHistory;
 }
 
+export function saveGenerationHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(generationHistory));
+  } catch(e) {
+    console.error("Failed to save history", e);
+  }
+}
+
 /**
  * Resets the session logs list
  */
 export function clearGenerationHistory() {
   generationHistory = [];
+  saveGenerationHistory();
 }
 
 /**
@@ -36,12 +55,36 @@ export function playAudio(audioElement) {
  * @param {string} audioUrl - Target URL of the WAV file
  * @param {string} filename - Download file label
  */
-export function downloadAudio(audioUrl, filename = 'report.wav') {
+export async function downloadAudio(audioUrl, filename = 'report.wav') {
   if (!audioUrl) return;
-  const a = document.createElement('a');
-  a.href = audioUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  
+  try {
+    // Fetch the file and create a local blob URL to force the browser to download
+    // rather than navigating/redirecting the current page to the audio file.
+    const response = await fetch(audioUrl);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    }, 100);
+  } catch (error) {
+    console.error("Failed to download as blob, falling back to direct link", error);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = audioUrl;
+    a.download = filename;
+    a.target = '_blank'; // Prevent redirecting current page on fallback
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }
