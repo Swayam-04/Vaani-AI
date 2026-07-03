@@ -264,6 +264,6 @@ Should return:
 Powered by:
 - React
 - Flask
-- Ollama
-- Chatterbox TTS
+- Ollama https://github.com/ollama/ollama.git
+- Chatterbox TTS https://github.com/resemble-ai/chatterbox.git
 - Llama 3.2 3B
