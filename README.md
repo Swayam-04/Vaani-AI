@@ -43,135 +43,171 @@ VAANI-AI/
 │   │   └── ollama_service.py     # LLM Engine
 │   └── ...
 │
-├── start_server.bat   # Automated Master Startup Script
+├── VaaniAI.exe        # Automated Master Launcher (Windows only)
+├── start_server.bat   # Automated Master Startup Script (Windows only)
 └── README.md
 ```
 
 ---
 
-# Requirements
+# 🚀 Beginner's Installation Guide (All Platforms)
 
-## Operating System
+This section provides a detailed, step-by-step guide to installing VAANI AI on Windows, macOS, and Linux.
 
-- Windows 11
-- Windows 10
+## Step 1: Install Core Dependencies (Prerequisites)
+
+Before starting, you must install these 4 core tools on your system:
+
+1. **Python (3.10 or 3.11 recommended)**
+   - Windows/macOS: Download from [python.org/downloads](https://www.python.org/downloads/)
+   - Linux (Ubuntu/Debian): `sudo apt install python3 python3-pip python3-venv`
+2. **Node.js (Version 20 or higher)**
+   - Windows/macOS: Download from [nodejs.org](https://nodejs.org/)
+   - Linux: Use NodeSource or nvm to install Node 20+.
+3. **Git**
+   - Windows/macOS: Download from [git-scm.com](https://git-scm.com/)
+   - Linux: `sudo apt install git`
+4. **Ollama (Local AI Engine)**
+   - Windows/macOS: Download from [ollama.com/download](https://ollama.com/download)
+   - Linux: `curl -fsSL https://ollama.com/install.sh | sh`
+
+*(Note: FFmpeg is NO LONGER required! Audio is generated securely as a native WAV format).*
 
 ---
 
-## Software
+## Step 2: Download the Local AI Model
 
-Install:
+Once Ollama is installed, open your Terminal or Command Prompt and download the `llama3.2:3b` model. This model will run offline on your machine:
 
-- Python 3.11.x
-- Node.js 22+
-- Git
-- Ollama
-- Visual Studio C++ Redistributable
-
-*(Note: FFmpeg is no longer required as audio is generated as native WAV format)*
+```bash
+ollama pull llama3.2:3b
+```
+Wait for the download to finish (it is roughly 2 GB). You can verify it downloaded successfully by running:
+```bash
+ollama list
+```
 
 ---
 
-# Installation
+## Step 3: Clone the Repository
 
-## 1. Install Backend Dependencies
+Open your Terminal or Command Prompt, navigate to the folder where you want to store the project, and run:
 
-Inside the `backend` folder:
+```bash
+git clone https://github.com/Swayam-04/Vaani-AI.git
+cd Vaani-AI
+```
 
+---
+
+## Step 4: Setup by Operating System
+
+Choose the tab for your operating system below to install the frontend and backend dependencies.
+
+### 🪟 Windows Setup
+
+**1. Install Backend Dependencies**
+Open Command Prompt and run:
 ```cmd
 cd backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
+*(If `requirements.txt` fails, run: `pip install flask flask-cors requests python-dotenv torch torchaudio chatterbox-tts`)*
 
-If `requirements.txt` is unavailable:
-
+**2. Install Frontend Dependencies**
+Go back to the root directory and install React packages:
 ```cmd
-pip install flask flask-cors requests python-dotenv torch torchaudio chatterbox-tts
+cd ..
+npm install
 ```
 
----
+### 🍎 macOS Setup
 
-## 2. Install Frontend Dependencies
+**1. Install Backend Dependencies**
+Open Terminal and run:
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-At the root directory (where `package.json` is located):
+**2. Install Frontend Dependencies**
+Go back to the root directory and install React packages:
+```bash
+cd ..
+npm install
+```
 
-```cmd
+### 🐧 Linux Setup
+
+**1. Install Backend Dependencies**
+Open Terminal and run:
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**2. Install Frontend Dependencies**
+Go back to the root directory and install React packages:
+```bash
+cd ..
 npm install
 ```
 
 ---
 
-## 3. Install Ollama & Llama Model
+# 🎮 Running VAANI AI
 
-Download Ollama from [ollama.com](https://ollama.com/download)
+## Easy Start (Windows Only)
+If you are on Windows, simply double-click the **`VaaniAI.exe`** executable file in the root folder. It will safely open all required services (Ollama, Flask, React) in automated background windows for you!
 
-Verify installation:
+## Manual Start (macOS / Linux / Advanced Users)
+If you are on a Mac or Linux, you will need to open **3 separate terminal windows**. Keep them all open simultaneously!
 
-```cmd
-ollama --version
-```
-
-Pull the local AI model:
-
-```cmd
-ollama pull llama3.2:3b
-```
-
-Verify it downloaded successfully:
-
-```cmd
-ollama list
-```
-
----
-
-# Running VAANI AI
-
-## Automated Startup (Recommended)
-
-Simply run the master startup script from the root directory:
-
-```cmd
-start_server.bat
-```
-
-This will automatically launch Ollama, the Flask/Chatterbox Backend, and the React Frontend in independent windows.
-
-## Manual Startup Order
-
-If you prefer to start services manually, strictly follow this order:
-
-### Terminal 1: LLM Engine
-```cmd
+**Terminal 1: Start Ollama**
+```bash
 ollama serve
 ```
+*(If it says "port is already in use", Ollama is already running in the background. You can close this terminal).*
 
-### Terminal 2: Flask Backend (TTS & API)
-```cmd
+**Terminal 2: Start Flask Backend (TTS & API)**
+```bash
 cd backend
-venv\Scripts\python app.py
+source venv/bin/activate   # On Windows use: venv\Scripts\activate
+python app.py
 ```
-*(Runs at http://127.0.0.1:5000)*
+*(You should see it running on `http://127.0.0.1:5000`)*
 
-### Terminal 3: React Frontend
-```cmd
+**Terminal 3: Start React Frontend**
+```bash
+# Make sure you are in the root VAANI-AI folder
 npm run dev
 ```
-*(Runs at http://localhost:5173)*
+*(You should see it running on `http://localhost:5173`)*
+
+🎉 **Open your web browser and go to `http://localhost:5173` to use the application!**
 
 ---
 
-# Verify Services
+# 🛠️ Verify Services / Troubleshooting
 
-## Ollama
-```cmd
+If something isn't working, use these commands to figure out what broke:
+
+## 1. Verify Ollama is alive
+Open a new terminal and run:
+```bash
 curl http://localhost:11434/api/tags
 ```
+If you get a connection refused error, your Ollama daemon (Terminal 1) crashed or isn't running.
 
-## Flask / Chatterbox
-```cmd
+## 2. Verify Flask & Chatterbox are alive
+Open a new terminal and run:
+```bash
 curl http://127.0.0.1:5000/health
 ```
 Should return:
@@ -182,57 +218,12 @@ Should return:
 }
 ```
 
----
+## Common Errors
 
-# API Flow
-
-```text
-Frontend
-   ↓
-Flask
-   ↓
-Ollama (Generates natural English text)
-   ↓
-Chatterbox TTS (Converts chunks of text to tensors)
-   ↓
-WAV Audio (Concatenated PyTorch audio sequence)
-   ↓
-Frontend Player
-```
-
----
-
-# Common Errors
-
-## 500 Internal Server Error
-Check if both the Flask backend and Ollama daemon are actively running.
-
-## Backend Offline
-Restart the Flask server using:
-```cmd
-cd backend
-venv\Scripts\python app.py
-```
-
-## Ollama Connection Refused
-Check your available models:
-```cmd
-ollama list
-```
-If `llama3.2:3b` is missing, run:
-```cmd
-ollama pull llama3.2:3b
-```
-
-## Port Already In Use
-Find the blocking process:
-```cmd
-netstat -ano | findstr :5000
-```
-Kill it:
-```cmd
-taskkill /PID <PID> /F
-```
+- **500 Internal Server Error in React:** Check Terminal 2 (Flask). Did you forget to activate the virtual environment (`venv`) before running `python app.py`? Are the Python packages installed?
+- **Port 5000 Already In Use:** 
+  - **Windows:** Run `netstat -ano | findstr :5000` and `taskkill /PID <PID> /F`
+  - **macOS/Linux:** Run `lsof -i :5000` and `kill -9 <PID>`
 
 ---
 
