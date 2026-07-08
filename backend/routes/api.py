@@ -10,7 +10,7 @@ from config import Config
 from logger import flask_logger
 
 # Import memory helpers
-from memory.memory import load_preferences, save_message, get_recent_context
+from memory.memory import load_preferences, save_message, get_recent_context, start_new_conversation, get_db
 
 api_bp = Blueprint("api", __name__)
 
@@ -72,11 +72,33 @@ def generate_report():
     conversation_id = data.get("conversation_id")
     user_id = data.get("user_id", "default")
     
+    # Ensure conversation_id is valid, or create one automatically
+    exists = False
+    if conversation_id:
+        try:
+            with get_db() as conn:
+                row = conn.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+                if row:
+                    exists = True
+        except Exception:
+            pass
+            
+    if not exists:
+        from datetime import datetime
+        title = f"Chat {datetime.now().strftime('%Y-%m-%d')}"
+        try:
+            conversation_id = start_new_conversation(user_id=user_id, title=title)
+        except Exception as e:
+            flask_logger.error(f"Failed to create automatic conversation: {e}")
+            
     # Load preferences to verify if memory is enabled
-    prefs = load_preferences(user_id)
+    try:
+        prefs = load_preferences(user_id)
+    except Exception:
+        prefs = {}
     memory_enabled = prefs.get("memory_enabled", 1) == 1
 
-    if conversation_id and memory_enabled:
+    if data.get("conversation_id") and memory_enabled:
         flask_logger.info("Using persistent conversational pipeline for conversation ID: %s", conversation_id)
         try:
             start_time = time.time()
@@ -132,6 +154,7 @@ def generate_report():
                 "success": True,
                 "generated_text": response_text,
                 "audio_file": f"/static/audio/{audio_filename}",
+                "conversation_id": conversation_id,
                 "latencies": {
                     "ollama": round(ollama_latency, 2),
                     "chatterbox": round(tts_latency, 2),
@@ -149,4 +172,15 @@ def generate_report():
     else:
         flask_logger.info("Delegating to standard PipelineOrchestrator (No memory context)")
         response_data = PipelineOrchestrator.generate_response(prompt)
+        
+        # Save both prompt and assistant response automatically if successful
+        if response_data.get("success") and conversation_id:
+            try:
+                save_message(conversation_id, "user", prompt)
+                save_message(conversation_id, "assistant", response_data.get("generated_text"))
+                response_data["conversation_id"] = conversation_id
+                flask_logger.info("Automatically saved prompt and response to conversation ID: %s", conversation_id)
+            except Exception as e:
+                flask_logger.error(f"Failed to auto-save messages to SQLite: {e}")
+                
         return jsonify(response_data), 200

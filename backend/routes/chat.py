@@ -7,14 +7,15 @@ from memory.memory import (
     load_conversation,
     search_history,
     load_preferences,
-    save_preferences
+    save_preferences,
+    get_db
 )
 from config import ConfigManager
 from logger import flask_logger
 
 chat_bp = Blueprint("chat", __name__)
 
-@chat_bp.route("/conversations", methods=["POST"])
+@chat_bp.route("/history", methods=["POST"])
 def create_chat():
     """Starts a new conversation thread."""
     data = request.get_json() or {}
@@ -29,7 +30,7 @@ def create_chat():
         flask_logger.error("Failed to create conversation: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-@chat_bp.route("/conversations", methods=["GET"])
+@chat_bp.route("/history", methods=["GET"])
 def list_chats():
     """Lists or searches conversation threads for a user."""
     user_id = request.args.get("user_id", "default")
@@ -45,7 +46,7 @@ def list_chats():
         flask_logger.error("Failed to list conversations: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-@chat_bp.route("/conversations/<int:conversation_id>", methods=["PUT"])
+@chat_bp.route("/history/<int:conversation_id>", methods=["PUT"])
 def rename_chat(conversation_id):
     """Renames an existing conversation thread."""
     data = request.get_json() or {}
@@ -55,6 +56,10 @@ def rename_chat(conversation_id):
         return jsonify({"success": False, "error": "Title cannot be empty"}), 400
         
     try:
+        with get_db() as conn:
+            row = conn.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+            if not row:
+                return jsonify({"success": False, "error": "Conversation not found"}), 404
         rename_conversation(conversation_id, title)
         flask_logger.info("Renamed conversation ID %s to '%s'", conversation_id, title)
         return jsonify({"success": True}), 200
@@ -62,10 +67,14 @@ def rename_chat(conversation_id):
         flask_logger.error("Failed to rename conversation: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-@chat_bp.route("/conversations/<int:conversation_id>", methods=["DELETE"])
+@chat_bp.route("/history/<int:conversation_id>", methods=["DELETE"])
 def delete_chat(conversation_id):
     """Deletes an existing conversation thread and all its messages."""
     try:
+        with get_db() as conn:
+            row = conn.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+            if not row:
+                return jsonify({"success": False, "error": "Conversation not found"}), 404
         delete_conversation(conversation_id)
         flask_logger.info("Deleted conversation ID %s", conversation_id)
         return jsonify({"success": True}), 200
@@ -73,10 +82,14 @@ def delete_chat(conversation_id):
         flask_logger.error("Failed to delete conversation: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-@chat_bp.route("/conversations/<int:conversation_id>/messages", methods=["GET"])
+@chat_bp.route("/history/<int:conversation_id>", methods=["GET"])
 def get_chat_messages(conversation_id):
     """Loads all messages in a conversation thread."""
     try:
+        with get_db() as conn:
+            row = conn.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+            if not row:
+                return jsonify({"success": False, "error": "Conversation not found"}), 404
         messages = load_conversation(conversation_id)
         return jsonify({"success": True, "messages": messages}), 200
     except Exception as e:

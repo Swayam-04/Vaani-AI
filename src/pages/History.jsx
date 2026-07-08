@@ -15,9 +15,10 @@ const handleUnauthorized = (res) => {
 };
 
 export default function History({ settings, backendOnline, onAudioGenerated }) {
-  const [conversations, setConversations] = useState([]);
+  const [history, setHistory] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingList, setLoadingList] = useState(false);
+  const [errorState, setErrorState] = useState(null);
 
   // Active chat details
   const [activeConv, setActiveConv] = useState(null);
@@ -48,22 +49,30 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
 
   const fetchConversations = async (selectId = null) => {
     setLoadingList(true);
+    setErrorState(null);
     try {
       const url = searchQuery.trim() 
-        ? `http://127.0.0.1:5000/conversations?user_id=default&search=${encodeURIComponent(searchQuery)}`
-        : `http://127.0.0.1:5000/conversations?user_id=default`;
+        ? `http://127.0.0.1:5000/history?user_id=default&search=${encodeURIComponent(searchQuery)}`
+        : `http://127.0.0.1:5000/history?user_id=default`;
         
-      const res = await fetch(url, {
-        headers: getAuthHeaders()
-      });
-      if (handleUnauthorized(res)) return;
+      const res = await fetch(url);
+      if (res.status === 404) {
+        setErrorState("No conversations found.");
+        setHistory([]);
+        return;
+      }
+      if (res.status === 500) {
+        setErrorState("Unable to load history.");
+        setHistory([]);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setConversations(data.conversations);
+          setHistory(data.conversations || []);
           
           // Auto-select conversation if specified
-          if (selectId) {
+          if (selectId && data.conversations) {
             const found = data.conversations.find(c => c.id === selectId);
             if (found) handleSelectConv(found);
           }
@@ -71,7 +80,8 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
       }
     } catch (err) {
       console.error(err);
-      message.error("Failed to load conversations.");
+      setErrorState("Backend Offline.");
+      setHistory([]);
     } finally {
       setLoadingList(false);
     }
@@ -85,12 +95,11 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
 
   const handleCreateChat = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:5000/conversations", {
+      const res = await fetch("http://127.0.0.1:5000/history", {
         method: "POST",
-        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: `Chat ${new Date().toLocaleDateString()}`, user_id: "default" })
       });
-      if (handleUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -110,10 +119,7 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
     setMessagesList([]);
     setActiveAudioUrl(null);
     try {
-      const res = await fetch(`http://127.0.0.1:5000/conversations/${conv.id}/messages`, {
-        headers: getAuthHeaders()
-      });
-      if (handleUnauthorized(res)) return;
+      const res = await fetch(`http://127.0.0.1:5000/history/${conv.id}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -129,12 +135,11 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
 
   const handleRenameConv = async (id, newTitle) => {
     try {
-      const res = await fetch(`http://127.0.0.1:5000/conversations/${id}`, {
+      const res = await fetch(`http://127.0.0.1:5000/history/${id}`, {
         method: "PUT",
-        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle })
       });
-      if (handleUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -158,11 +163,9 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
       okType: 'danger',
       onOk: async () => {
         try {
-          const res = await fetch(`http://127.0.0.1:5000/conversations/${id}`, {
-            method: "DELETE",
-            headers: getAuthHeaders()
+          const res = await fetch(`http://127.0.0.1:5000/history/${id}`, {
+            method: "DELETE"
           });
-          if (handleUnauthorized(res)) return;
           if (res.ok) {
             const data = await res.json();
             if (data.success) {
@@ -202,7 +205,7 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
       setProgress(60);
       const res = await fetch("http://127.0.0.1:5000/generate", {
         method: "POST",
-        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userText,
           conversation_id: activeConv.id,
@@ -211,17 +214,13 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
       });
 
       setProgress(90);
-      if (handleUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
           setProgress(100);
           
           // Re-fetch message history to get real DB record with assistant response
-          const historyRes = await fetch(`http://127.0.0.1:5000/conversations/${activeConv.id}/messages`, {
-            headers: getAuthHeaders()
-          });
-          if (handleUnauthorized(historyRes)) return;
+          const historyRes = await fetch(`http://127.0.0.1:5000/history/${activeConv.id}`);
           if (historyRes.ok) {
             const historyData = await historyRes.json();
             if (historyData.success) {
@@ -320,11 +319,13 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
 
             {loadingList ? (
               <div style={{ textAlign: 'center', padding: '30px 0' }}><Spin size="medium" /></div>
-            ) : conversations.length === 0 ? (
-              <Empty description={<span style={{ color: '#8b949e' }}>No chat history found.</span>} />
+            ) : errorState ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#ff4d4f' }}>{errorState}</div>
+            ) : (history && Array.isArray(history) && history.length === 0) ? (
+              <Empty description={<span style={{ color: '#8b949e' }}>No conversations yet</span>} />
             ) : (
               <div className={styles.chatList}>
-                {conversations.map((conv) => (
+                {Array.isArray(history) && history.map((conv) => (
                   <ConversationCard
                     key={conv.id}
                     conversation={conv}
