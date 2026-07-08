@@ -2,8 +2,7 @@
   "flask": {
     "host": "127.0.0.1",
     "port": 5000,
-    "debug": true,
-    "auth_enabled": false
+    "debug": true
   },
   "ollama": {
     "url": "http://127.0.0.1:11434",

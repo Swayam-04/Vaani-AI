@@ -16,7 +16,7 @@ class ConfigManager:
     @classmethod
     def _create_default(cls):
         default_config = {
-            "flask": {"host": "127.0.0.1", "port": 5000, "debug": True, "auth_enabled": False},
+            "flask": {"host": "127.0.0.1", "port": 5000, "debug": True},
             "ollama": {"url": "http://127.0.0.1:11434", "model": "gemma4", "timeout_seconds": 120},
             "chatterbox": {"model": "ResembleAI/chatterbox", "device": "cuda", "sample_rate": 24000},
             "paths": {"log_dir": "logs", "audio_dir": "static/audio"}
@@ -45,8 +45,7 @@ class Config:
     @property
     def DEBUG(self): return ConfigManager.get("flask", "debug", True)
 
-    @property
-    def AUTH_ENABLED(self): return ConfigManager.get("flask", "auth_enabled", False)
+
     
     @property
     def OLLAMA_BASE_URL(self): return ConfigManager.get("ollama", "url", "http://127.0.0.1:11434")

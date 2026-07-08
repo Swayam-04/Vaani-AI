@@ -26,15 +26,8 @@ export default function UploadDialog({ visible, onClose, onUploadSuccess }) {
     }, 300);
 
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const response = await fetch("http://127.0.0.1:5000/upload", {
         method: "POST",
-        headers: headers,
         body: formData,
       });
 

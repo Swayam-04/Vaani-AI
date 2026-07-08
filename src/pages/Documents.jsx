@@ -8,18 +8,10 @@ import { BASE_URL } from '../config/config';
 import styles from './Documents.module.css';
 
 const getAuthHeaders = (headers = {}) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
   return headers;
 };
 
 const handleUnauthorized = (res) => {
-  if (res.status === 401) {
-    window.dispatchEvent(new Event("unauthorized"));
-    return true;
-  }
   return false;
 };
 
