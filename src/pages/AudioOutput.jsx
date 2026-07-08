@@ -32,7 +32,7 @@ export default function AudioOutput({ settings }) {
 
   const handleDownload = (clip, e) => {
     e.stopPropagation();
-    downloadAudio(clip.audioUrl, `vaani_${clip.id}.wav`);
+    downloadAudio(clip.audioUrl, `vaani_${clip.id}.mp3`);
   };
 
   const columns = [
@@ -94,7 +94,7 @@ export default function AudioOutput({ settings }) {
             icon={<FiDownload />} 
             disabled={!record.audioUrl}
             onClick={(e) => handleDownload(record, e)}
-            title="Download WAV"
+            title="Download MP3"
           />
         </Space>
       )

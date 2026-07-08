@@ -55,7 +55,7 @@ export function playAudio(audioElement) {
  * @param {string} audioUrl - Target URL of the WAV file
  * @param {string} filename - Download file label
  */
-export async function downloadAudio(audioUrl, filename = 'report.wav') {
+export async function downloadAudio(audioUrl, filename = 'report.mp3') {
   if (!audioUrl) return;
   
   try {

@@ -1,15 +1,26 @@
 .card {
   background-color: #0e1626;
   border: 1px solid #162238;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 16px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.14);
+}
+
+.card :global(.ant-card-body) {
+  padding: 16px !important;
 }
 
 .card:hover {
   border-color: #1e88e5;
-  box-shadow: 0 4px 12px rgba(30, 136, 229, 0.15);
+  box-shadow: 0 10px 20px -5px rgba(30, 136, 229, 0.2), 0 8px 16px -8px rgba(30, 136, 229, 0.2);
   transform: translateY(-2px);
+}
+
+.activeCard {
+  border-color: #1e88e5;
+  background-color: #111b2e;
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.3);
 }
 
 .content {
@@ -25,7 +36,7 @@
 }
 
 .docIcon {
-  font-size: 32px;
+  font-size: 36px;
   color: #1e88e5;
   flex-shrink: 0;
 }
@@ -34,6 +45,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  width: 100%;
 }
 
 .filename {
@@ -51,7 +63,72 @@
   margin-top: 2px;
 }
 
-.tags {
+.metaRow {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.badge {
+  text-transform: uppercase;
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-weight: 600;
+  font-size: 11px;
+  margin: 0;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.actionsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #162238;
+}
+
+/* Ant design button custom overrides */
+.actionBtn {
+  height: 40px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  flex: 1;
+  min-width: 90px;
+  transition: all 0.2s ease !important;
+  background-color: transparent !important;
+  border: 1px solid #213353 !important;
+  color: #c9d1d9 !important;
+}
+
+.actionBtn:hover {
+  border-color: #1e88e5 !important;
+  color: #1e88e5 !important;
+  background-color: rgba(30, 136, 229, 0.05) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+}
+
+.deleteBtn {
+  border: 1px solid #4a151b !important;
+  color: #ff7875 !important;
+}
+
+.deleteBtn:hover {
+  border-color: #ff4d4f !important;
+  color: #ffffff !important;
+  background-color: #ff4d4f !important;
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3) !important;
 }

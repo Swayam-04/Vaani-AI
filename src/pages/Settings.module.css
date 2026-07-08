@@ -1,42 +1,81 @@
-.card {
-  border-radius: 10px !important;
+.container {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.sectionHeader {
+.header {
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #f0f6fc;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  color: #8b949e;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.card {
+  background-color: #0e1626 !important;
+  border: 1px solid #162238 !important;
+  border-radius: 12px !important;
+  height: 100%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.card :global(.ant-card-head) {
+  border-bottom: 1px solid #162238 !important;
+  padding: 0 24px !important;
+}
+
+.card :global(.ant-card-body) {
+  padding: 24px !important;
+}
+
+.cardTitleRow {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text-main);
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 10px;
+  font-weight: 600;
+  color: #f0f6fc;
 }
 
 .sectionIcon {
-  color: var(--color-primary);
+  color: #1e88e5;
   font-size: 18px;
 }
 
 .settingItem {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 20px;
+}
+
+.settingItem:last-child {
+  margin-bottom: 0;
 }
 
 .label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: #8b949e;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .itemIcon {
-  color: var(--color-primary);
+  color: #1e88e5;
 }
 
 .select {
@@ -44,52 +83,68 @@
 }
 
 .select :global(.ant-select-selector) {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-  border-color: var(--color-border) !important;
-  color: var(--color-text-main) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  border-color: #162238 !important;
+  color: #f0f6fc !important;
   height: 40px !important;
   padding: 4px 12px !important;
-  border-radius: 6px !important;
+  border-radius: 8px !important;
 }
 
 .select :global(.ant-select-selection-item) {
-  color: var(--color-text-main) !important;
+  color: #f0f6fc !important;
+  line-height: 30px !important;
+}
+
+.sliderWrapper {
+  padding: 0 8px;
 }
 
 .slider {
-  margin: 10px 8px !important;
+  margin: 14px 0 10px 0 !important;
 }
 
 .slider :global(.ant-slider-mark-text) {
-  color: var(--color-text-secondary) !important;
+  color: #8b949e !important;
+  font-size: 11px;
 }
 
-.divider {
-  border-color: var(--color-border) !important;
-  margin: 24px 0 !important;
+.numberInput {
+  width: 100% !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  border-color: #162238 !important;
+  color: #f0f6fc !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+}
+
+.numberInput :global(.ant-input-number-input) {
+  height: 38px !important;
+  color: #f0f6fc !important;
 }
 
 .toggleRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
+  padding: 16px;
   background-color: rgba(255, 255, 255, 0.01);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid #162238;
+  border-radius: 10px;
   height: 100%;
+  gap: 16px;
 }
 
 .toggleLabel {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color-text-main);
+  color: #f0f6fc;
   display: block;
 }
 
 .toggleDesc {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  margin-top: 2px;
-  max-width: 250px;
+  color: #8b949e;
+  margin-top: 4px;
+  line-height: 1.4;
 }

@@ -250,6 +250,7 @@ export default function Documents({ settings, backendOnline }) {
                       onAsk={(d) => { handleSelectDoc(d); setActiveTab('rag'); }}
                       onRead={handleReadAloud}
                       onDelete={handleDeleteDoc}
+                      isActive={activeDoc && activeDoc.id === doc.id}
                     />
                   </div>
                 ))}

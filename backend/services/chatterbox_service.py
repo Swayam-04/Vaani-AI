@@ -118,10 +118,40 @@ def generate_speech_audio(text: str, output_dir: str) -> dict:
         # Save audio using torchaudio as WAV first
         torchaudio.save(wav_path, audio_tensor.cpu(), sample_rate=sample_rate)
         
-        # Just return the WAV file natively (HTML5 <audio> plays .wav perfectly)
-        filename = filename.replace(".mp3", ".wav")
-        filepath = wav_path
-        
+        # Convert WAV to MP3 using lameenc
+        try:
+            import lameenc
+            # Convert float tensor [-1.0, 1.0] to int16 PCM bytes
+            pcm_tensor = (torch.clamp(audio_tensor, -1.0, 1.0) * 32767.0).to(torch.int16)
+            
+            # Interleave channels: shape [channels, time] -> transpose to [time, channels] -> flatten
+            if pcm_tensor.shape[0] > 1:
+                pcm_data = pcm_tensor.T.numpy().tobytes()
+            else:
+                pcm_data = pcm_tensor.numpy().tobytes()
+                
+            encoder = lameenc.Encoder()
+            encoder.set_bit_rate(192)
+            encoder.set_in_sample_rate(sample_rate)
+            encoder.set_channels(pcm_tensor.shape[0])
+            encoder.set_quality(2)
+            
+            mp3_data = encoder.encode(pcm_data)
+            mp3_data += encoder.flush()
+            
+            with open(filepath, "wb") as f:
+                f.write(mp3_data)
+                
+            # Delete temporary WAV file
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+                
+            chatterbox_logger.info("Successfully encoded and saved MP3 to %s", filepath)
+        except Exception as encode_err:
+            chatterbox_logger.error("lameenc conversion failed, falling back to WAV: %s", encode_err)
+            filename = filename.replace(".mp3", ".wav")
+            filepath = wav_path
+            
         # Calculate duration of the generated audio tensor in seconds
         duration = float(audio_tensor.shape[-1]) / sample_rate
         

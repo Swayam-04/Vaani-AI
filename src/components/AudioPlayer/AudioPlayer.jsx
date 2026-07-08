@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Button, Slider, Space, Tooltip } from 'antd';
-import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiDownload } from 'react-icons/fi';
+import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiDownload, FiRotateCcw } from 'react-icons/fi';
 import { playAudio, downloadAudio as downloadAudioService } from '../../services/ttsService';
 import styles from './AudioPlayer.module.css';
 
@@ -82,6 +82,15 @@ export default function AudioPlayer({ audioUrl, autoPlay }) {
     }
   };
 
+  // Handle Replay
+  const handleReplay = () => {
+    if (!audioUrl || !audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    playAudio(audioRef.current)
+      .then(() => setIsPlaying(true))
+      .catch(err => console.error("Error replaying audio:", err));
+  };
+
   // Handle Seek
   const handleSeek = (value) => {
     if (!audioUrl) return;
@@ -111,7 +120,7 @@ export default function AudioPlayer({ audioUrl, autoPlay }) {
   // Download Audio
   const downloadAudio = () => {
     if (!audioUrl) return;
-    downloadAudioService(audioUrl, `vaani_speech_${Date.now()}.wav`);
+    downloadAudioService(audioUrl, `vaani_speech_${Date.now()}.mp3`);
   };
 
   // Format time (MM:SS)
@@ -152,7 +161,7 @@ export default function AudioPlayer({ audioUrl, autoPlay }) {
         </div>
       }
       extra={
-        <Tooltip title={isPlayerDisabled ? "No audio generated yet" : "Download WAV file"}>
+        <Tooltip title={isPlayerDisabled ? "No audio generated yet" : "Download MP3 file"}>
           <Button
             type="primary"
             icon={<FiDownload />}
@@ -160,7 +169,7 @@ export default function AudioPlayer({ audioUrl, autoPlay }) {
             onClick={downloadAudio}
             className={styles.downloadBtn}
           >
-            Download
+            Download MP3
           </Button>
         </Tooltip>
       }
@@ -172,15 +181,27 @@ export default function AudioPlayer({ audioUrl, autoPlay }) {
       </div>
       
       <div className={styles.controlsRow}>
-        <Button 
-          type="primary" 
-          shape="circle" 
-          size="large"
-          icon={isPlaying ? <FiPause /> : <FiPlay />}
-          onClick={togglePlay}
-          disabled={isPlayerDisabled}
-          className={`${styles.playBtn} ${isPlaying ? styles.pulseBtn : ''}`}
-        />
+        <div className={styles.playbackButtons}>
+          <Button 
+            type="primary" 
+            shape="circle" 
+            size="large"
+            icon={isPlaying ? <FiPause /> : <FiPlay />}
+            onClick={togglePlay}
+            disabled={isPlayerDisabled}
+            className={`${styles.playBtn} ${isPlaying ? styles.pulseBtn : ''}`}
+          />
+          <Tooltip title="Replay from start">
+            <Button 
+              type="default"
+              shape="circle"
+              icon={<FiRotateCcw />}
+              onClick={handleReplay}
+              disabled={isPlayerDisabled}
+              className={styles.replayBtn}
+            />
+          </Tooltip>
+        </div>
         
         <div className={styles.sliderContainer}>
           <div className={styles.timeLabel}>{formatTime(currentTime)}</div>

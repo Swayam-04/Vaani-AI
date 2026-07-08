@@ -97,7 +97,23 @@ def list_documents():
     try:
         with get_db() as conn:
             rows = conn.execute("SELECT id, filename, filepath, type, uploaded_at FROM documents ORDER BY id DESC").fetchall()
-            docs = [dict(row) for row in rows]
+            docs = []
+            for row in rows:
+                d = dict(row)
+                try:
+                    if os.path.exists(d["filepath"]):
+                        size_bytes = os.path.getsize(d["filepath"])
+                        if size_bytes < 1024:
+                            d["size"] = f"{size_bytes} B"
+                        elif size_bytes < 1024 * 1024:
+                            d["size"] = f"{round(size_bytes / 1024, 1)} KB"
+                        else:
+                            d["size"] = f"{round(size_bytes / (1024 * 1024), 1)} MB"
+                    else:
+                        d["size"] = "N/A"
+                except Exception:
+                    d["size"] = "N/A"
+                docs.append(d)
         return jsonify({"success": True, "documents": docs}), 200
     except Exception as e:
         flask_logger.error("Failed to list documents: %s", e)
