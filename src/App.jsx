@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ConfigProvider, Layout, theme } from 'antd';
+import { ConfigProvider, Layout, theme, message } from 'antd';
 import Header from './components/Header/Header';
 import Sidebar from './components/Sidebar/Sidebar';
 import StatusPanel from './components/StatusPanel/StatusPanel';
@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import About from './pages/About';
 import History from './pages/History';
 import Documents from './pages/Documents';
+import Login from './pages/Login';
 import { usePipeline } from './hooks/usePipeline';
 
 const { Content } = Layout;
@@ -20,12 +21,27 @@ function AppContent() {
   const [collapsed, setCollapsed] = useState(false);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   
+  // Auth configurations
+  const [token, setToken] = useState(localStorage.getItem("access_token"));
+  const [authEnabled, setAuthEnabled] = useState(false);
+
   // Local Text Buffer state
   const [text, setText] = useState('');
   const [historyTrigger, setHistoryTrigger] = useState(0);
 
   // Backend online state checks
   const [backendOnline, setBackendOnline] = useState(false);
+
+  const handleLoginSuccess = (newToken) => {
+    localStorage.setItem("access_token", newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    setToken(null);
+    message.info("Logged out successfully.");
+  };
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -35,6 +51,7 @@ function AppContent() {
           const data = await res.json();
           if (data.status === "online") {
             setBackendOnline(true);
+            setAuthEnabled(data.auth_enabled === true);
             return;
           }
         }
@@ -48,6 +65,18 @@ function AppContent() {
     const interval = setInterval(checkHealth, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      if (authEnabled) {
+        localStorage.removeItem("access_token");
+        setToken(null);
+        message.error("Session expired. Please login again.");
+      }
+    };
+    window.addEventListener("unauthorized", onUnauthorized);
+    return () => window.removeEventListener("unauthorized", onUnauthorized);
+  }, [authEnabled]);
 
   // Instantiating Pipeline Orchestration Hook
   const pipeline = usePipeline();
@@ -72,7 +101,15 @@ function AppContent() {
     if (!backendOnline) return;
     const fetchPrefs = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:5000/preferences?user_id=default");
+        const headers = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        const res = await fetch("http://127.0.0.1:5000/preferences?user_id=default", { headers });
+        if (res.status === 401 && authEnabled) {
+          window.dispatchEvent(new Event("unauthorized"));
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.preferences) {
@@ -95,7 +132,7 @@ function AppContent() {
       }
     };
     fetchPrefs();
-  }, [backendOnline]);
+  }, [backendOnline, token, authEnabled]);
 
   const handleUpdateSetting = (key, value) => {
     setSettings((prev) => {
@@ -115,10 +152,18 @@ function AppContent() {
           chunk_overlap: updated.chunkOverlap,
           preferred_model: updated.preferredModel
         };
+        const headers = { "Content-Type": "application/json" };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         fetch("http://127.0.0.1:5000/preferences", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload)
+        }).then(res => {
+          if (res.status === 401 && authEnabled) {
+            window.dispatchEvent(new Event("unauthorized"));
+          }
         }).catch(err => console.error("Failed to sync preferences:", err));
       }
       return updated;
@@ -130,6 +175,11 @@ function AppContent() {
     setHistoryTrigger(prev => prev + 1);
   };
 
+  // If auth is enabled by backend and no token is present, show Login gate
+  if (authEnabled && !token) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app-container">
       <Header 
@@ -137,6 +187,7 @@ function AppContent() {
         onToggleSidebar={() => setCollapsed(!collapsed)}
         onOpenSettings={() => setSettingsDrawerOpen(true)}
         backendOnline={backendOnline}
+        onLogout={authEnabled ? handleLogout : undefined}
       />
       
       <Layout style={{ minHeight: 'calc(100vh - 64px)', flexDirection: 'row', background: 'transparent' }}>

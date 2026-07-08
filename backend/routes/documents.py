@@ -1,6 +1,7 @@
 import os
 import time
 from flask import Blueprint, request, jsonify
+from auth_helper import optional_jwt_required
 from werkzeug.utils import secure_filename
 from memory.memory import get_db, load_preferences
 from documents.document_processor import extract_and_chunk
@@ -20,6 +21,7 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @documents_bp.route("/upload", methods=["POST"])
+@optional_jwt_required()
 def upload_document():
     """Uploads, extracts, chunks, embeds, and indexes a local document."""
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -92,6 +94,7 @@ def upload_document():
         return jsonify({"success": False, "error": f"Failed to process document: {str(e)}"}), 500
 
 @documents_bp.route("/documents", methods=["GET"])
+@optional_jwt_required()
 def list_documents():
     """Returns a list of all indexed documents."""
     try:
@@ -104,6 +107,7 @@ def list_documents():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @documents_bp.route("/documents/<int:document_id>", methods=["DELETE"])
+@optional_jwt_required()
 def delete_document(document_id):
     """Deletes an indexed document and cleans up disk files."""
     try:
@@ -127,6 +131,7 @@ def delete_document(document_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 @documents_bp.route("/summarize", methods=["POST"])
+@optional_jwt_required()
 def summarize_document():
     """Generates an offline summary of the document."""
     data = request.get_json() or {}
@@ -163,6 +168,7 @@ def summarize_document():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @documents_bp.route("/ask-document", methods=["POST"])
+@optional_jwt_required()
 def ask_document():
     """Retrieves relevant chunks and queries Ollama to answer a question (RAG)."""
     data = request.get_json() or {}
@@ -222,6 +228,7 @@ def ask_document():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @documents_bp.route("/read-document", methods=["POST"])
+@optional_jwt_required()
 def read_document():
     """Synthesizes text content from a document into a local audio file."""
     data = request.get_json() or {}
