@@ -65,7 +65,6 @@ VAANI-AI/
 │   └── instance/
 │       └── vaani.db   # Local SQLite Database
 │
-├── VaaniAI.exe        # Automated Master Launcher (Windows only)
 ├── start_server.bat   # Automated Master Startup Script (Windows only)
 └── README.md          # Setup & Installation documentation
 ```
@@ -190,13 +189,141 @@ If you prefer to install the frontend dependencies individually rather than usin
 ```bash
 npm install react react-dom react-router-dom axios antd lucide-react react-hot-toast framer-motion clsx tailwindcss @headlessui/react @heroicons/react react-icons vite @vitejs/plugin-react
 ```
-
+Prerequisites Verification
+Before installing dependencies, verify that the required software is already installed.
+Software
+Check Command
+Expected Output
+Python
+python --version
+Python 3.10+
+Pip
+pip --version
+pip 23.x or later
+Node.js
+node --version
+v20.x or later
+npm
+npm --version
+10.x or later
+Git
+git --version
+git version 2.x
+Ollama
+ollama --version
+Ollama version
+uv (Python package manager)
+uv --version
+uv 0.x.x
+FFmpeg
+ffmpeg -version
+FFmpeg version
+SQLite
+sqlite3 --version
+SQLite version (optional)
+Check Installed AI Models
+To see which Ollama models are available:
+ollama list
+Example:
+NAME            ID             SIZE
+gemma4          xxxxxxxxx      9.6 GB
+llama3.2:3b     xxxxxxxxx      2.0 GB
+qwen3:8b        xxxxxxxxx      5.2 GB
+Verify Ollama Service
+Check whether Ollama is running:
+curl http://127.0.0.1:11434/api/tags
+or simply open:
+http://127.0.0.1:11434
+Verify Flask Backend
+curl http://127.0.0.1:5000/health
+Expected:
+{
+    "status": "ok"
+}
+Verify Chatterbox
+Open in browser:
+http://127.0.0.1:8000/health
+or
+http://127.0.0.1:3900/health
+(depending on the configured port)
+Expected:
+{
+    "status": "ok"
+}
+Verify React Frontend
+Start the frontend:
+npm run dev
+Then open:
+http://localhost:5173
+Verify Python Packages
+pip list
+or
+pip freeze
+Verify Node Packages
+npm list
+To check a specific package:
+npm list react
+npm list vite
+npm list axios
+Verify GPU (Optional)
+For NVIDIA GPUs:
+nvidia-smi
+Verify Environment Variables
+If using a .env file:
+type .env
+or (PowerShell):
+Get-Content .env
+Install Missing Software
+If any command is not recognized, install the corresponding software:
+Software
+Download
+Python
+https://www.python.org/downloads/⁠�
+Node.js
+https://nodejs.org/⁠�
+Git
+https://git-scm.com/downloads⁠�
+Ollama
+https://ollama.com/download⁠�
+uv
+pip install uv
+FFmpeg
+https://ffmpeg.org/download.html⁠�
 ---
+# 🎮 Running VAANI AI
 
-# 🎮 Running VAANI
+VAANI AI is distributed as source code. The executable (`VaaniAI.exe`) is **not included** in this GitHub repository.
 
-## Easy Start (Windows Only)
-If you are on Windows, simply double-click the **`VaaniAI.exe`** executable file in the root folder. It will safely open all required services (Ollama, Flask, React) in automated background windows for you!
+To run the project, start the required services manually.
+
+## Terminal 1 – Start Ollama
+
+```bash
+ollama serve
+```
+
+## Terminal 2 – Start the Flask Backend
+
+```bash
+cd backend
+python app.py
+```
+
+## Terminal 3 – Start the Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Once all services are running, open your browser and navigate to:
+
+```
+http://localhost:5173
+```
+
+The application is now ready to use.
 
 ## Manual Start (macOS / Linux / Advanced Users)
 If you are on a Mac or Linux, you will need to open **3 separate terminal windows**. Keep them all open simultaneously!
