@@ -2,11 +2,12 @@
 
 VAANI is an air-gapped, offline speech intelligence platform that converts coded missile information into natural English using a local LLM (Ollama) and generates high-fidelity speech using Chatterbox TTS.
 
-### 🌟 Key Features Added
+### 🌟 Key Features
 - **⚡ Real-Time Processing Telemetry**: Displays exact processing times for every stage with emoji badges (Response Time, Gemma 4, Chatterbox, MP3 Encoding, Audio Length).
 - **📝 Spoken Text transcription overlay**: Dynamic transcription blocks inside the custom audio player synchronized with the current playback time.
 - **📂 Persistent SQLite Audio Logs**: Database persistence logs storing configurations (speed, voice, duration, response time) with automated self-healing duration computation on startup.
 - **🎨 Brand Alignment**: Soundwave vector assets replacement and unified interface style.
+- **🌐 Offline Dual Speech Output**: Real-time generation of English speech and on-demand translation to natural Hindi speech with single-language Chatterbox models.
 
 ---
 
@@ -18,16 +19,21 @@ VAANI is an air-gapped, offline speech intelligence platform that converts coded
                   ▼
         React + Vite Frontend
                   │
-          HTTP (Port 5000)
+                  ▼
+           HTTP (Port 5000)
                   │
-          Flask Backend API (with built-in Chatterbox TTS)
+                  ▼
+    Flask Backend API (with built-in Chatterbox TTS)
                   │
-      ┌───────────┴────────────┐
-      ▼                        │
- Ollama LLM                    │
- (Port 11434)                  │
-      │                        │
-      └──────────► MP3 Audio ◄─┘
+        ┌─────────┴─────────┐
+        ▼                   ▼
+    Ollama LLM       Chatterbox TTS
+  (Port 11434)      (Local PyTorch)
+   Gemma 4 model    (EN & HI Single Packs)
+        │                   │
+        └─────────┬─────────┘
+                  ▼
+              MP3 Audio
 ```
 
 ---
@@ -42,27 +48,37 @@ VAANI-AI/
 ├── vite.config.js     # Frontend builder
 │
 ├── backend/
-│   ├── app.py
-│   ├── requirements.txt
+│   ├── app.py         # Main Flask Server
+│   ├── config.py      # App configurations
+│   ├── exceptions.py  # Error classes
+│   ├── logger.py      # setup logging
+│   ├── pipeline.py    # Pipeline Orchestration
+│   ├── requirements.txt # Python dependencies
+│   ├── memory/
+│   │   └── memory.py  # SQLite DB & history helpers
+│   ├── routes/
+│   │   ├── api.py     # Main endpoints (speech, history, logs)
+│   │   └── documents.py # Document analysis & RAG endpoints
 │   ├── services/
 │   │   ├── chatterbox_service.py # TTS Engine
-│   │   └── ollama_service.py     # LLM Engine
-│   └── ...
+│   │   └── ollama_service.py     # LLM Engine & translation
+│   └── instance/
+│       └── vaani.db   # Local SQLite Database
 │
 ├── VaaniAI.exe        # Automated Master Launcher (Windows only)
 ├── start_server.bat   # Automated Master Startup Script (Windows only)
-└── README.md
+└── README.md          # Setup & Installation documentation
 ```
 
 ---
 
-# 🚀 Beginner's Installation Guide (All Platforms)
+# 🚀 Complete Installation Guide (All Platforms)
 
 This section provides a detailed, step-by-step guide to installing VAANI on Windows, macOS, and Linux.
 
 ## Step 1: Install Core Dependencies (Prerequisites)
 
-Before starting, you must install these 4 core tools on your system:
+Before starting, you must install these core tools on your system:
 
 1. **Python (3.10 or 3.11 recommended)**
    - Windows/macOS: Download from [python.org/downloads](https://www.python.org/downloads/)
@@ -81,14 +97,14 @@ Before starting, you must install these 4 core tools on your system:
 
 ---
 
-## Step 2: Download the Local AI Model
+## Step 2: Download the Local LLM Model
 
-Once Ollama is installed, open your Terminal or Command Prompt and download the `llama3.2:3b` model. This model will run offline on your machine:
+Once Ollama is installed, open your Terminal or Command Prompt and download the `gemma4` model. This model will run offline on your machine:
 
 ```bash
-ollama pull llama3.2:3b
+ollama pull gemma4
 ```
-Wait for the download to finish (it is roughly 2 GB). You can verify it downloaded successfully by running:
+Wait for the download to finish. You can verify it downloaded successfully by running:
 ```bash
 ollama list
 ```
@@ -120,7 +136,7 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
-*(If `requirements.txt` fails, run: `pip install flask flask-cors requests python-dotenv torch torchaudio chatterbox-tts`)*
+*(If `requirements.txt` fails, run: `pip install flask flask-cors requests python-dotenv torch torchaudio chatterbox-tts mutagen lameenc`)*
 
 **2. Install Frontend Dependencies**
 Go back to the root directory and install React packages:
@@ -172,27 +188,7 @@ npm install
 If you prefer to install the frontend dependencies individually rather than using `npm install`, you can run these commands one by one:
 
 ```bash
-npm install react
-npm install react-dom
-npm install react-router-dom
-
-npm install axios
-npm install antd
-npm install lucide-react
-npm install react-hot-toast
-npm install framer-motion
-npm install clsx
-npm install tailwindcss
-npm install @headlessui/react
-npm install @heroicons/react
-npm install react-icons
-```
-
-If you are setting this up from scratch with Vite:
-
-```bash
-npm install vite
-npm install @vitejs/plugin-react
+npm install react react-dom react-router-dom axios antd lucide-react react-hot-toast framer-motion clsx tailwindcss @headlessui/react @heroicons/react react-icons vite @vitejs/plugin-react
 ```
 
 ---
@@ -277,6 +273,6 @@ Should return:
 Powered by:
 - React
 - Flask
-- Ollama https://github.com/ollama/ollama.git
-- Chatterbox TTS https://github.com/resemble-ai/chatterbox.git
-- Llama 3.2 3B
+- Ollama (https://github.com/ollama/ollama.git)
+- Chatterbox TTS (https://github.com/resemble-ai/chatterbox.git)
+- Gemma 4

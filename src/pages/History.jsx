@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConversationCard from '../components/ConversationCard/ConversationCard';
 import AudioPlayer from '../components/AudioPlayer/AudioPlayer';
 import { BASE_URL } from '../config/config';
+import { synthesizeSpeech } from '../services/api';
 import styles from './History.module.css';
 
 export default function History({ settings, backendOnline, onAudioGenerated }) {
@@ -286,25 +287,24 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
     }
   };
 
-  const handleReadAloudMessage = async (msgId, content) => {
-    setReadingMessageId(msgId);
+  const handleReadAloudMessage = async (msgId, content, language = 'en', translate = false) => {
+    setReadingMessageId(`${msgId}_${language}`);
+    const requestBody = { text: content, language, translate };
+    if (language === 'hi') {
+      console.log("Hindi synthesis request:", requestBody);
+    } else {
+      console.log("English synthesis request:", requestBody);
+    }
     try {
-      const res = await fetch("http://127.0.0.1:5000/read-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: content })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.audio_file) {
-          const generatedAudioUrl = data.audio_file.startsWith('http') 
-            ? data.audio_file 
-            : `${BASE_URL}${data.audio_file}`;
-          setActiveAudioUrl(generatedAudioUrl);
-          setActiveSpokenText(content || '');
-        } else {
-          message.error("Failed to synthesize audio for message.");
-        }
+      const res = await synthesizeSpeech(content, language, translate);
+      if (res && res.success && res.audio_file) {
+        const generatedAudioUrl = res.audio_file.startsWith('http') 
+          ? res.audio_file 
+          : `${BASE_URL}${res.audio_file}`;
+        setActiveAudioUrl(generatedAudioUrl);
+        setActiveSpokenText(res.translated_text || content || '');
+      } else {
+        message.error("Failed to synthesize audio for message.");
       }
     } catch (err) {
       console.error(err);
@@ -457,16 +457,28 @@ export default function History({ settings, backendOnline, onAudioGenerated }) {
                               </Tooltip>
 
                               {msg.role === 'assistant' && (
-                                <Tooltip title={readingMessageId === msg.id ? "Synthesizing..." : "Read text aloud"}>
-                                  <Button 
-                                    type="text" 
-                                    size="small" 
-                                    icon={readingMessageId === msg.id ? <Spin size="small" /> : <Volume2 size={13} />} 
-                                    onClick={() => handleReadAloudMessage(msg.id, msg.content)}
-                                    className={styles.msgActionBtn}
-                                    disabled={readingMessageId !== null}
-                                  />
-                                </Tooltip>
+                                <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                  <Tooltip title={readingMessageId === `${msg.id}_en` ? "Synthesizing..." : "Read in English"}>
+                                    <Button 
+                                      type="text" 
+                                      size="small" 
+                                      icon={readingMessageId === `${msg.id}_en` ? <Loader2 className={`${styles.spin}`} size={12} /> : <Volume2 size={13} />} 
+                                      onClick={() => handleReadAloudMessage(msg.id, msg.content, 'en', false)}
+                                      className={styles.msgActionBtn}
+                                      disabled={readingMessageId !== null}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title={readingMessageId === `${msg.id}_hi` ? "Translating..." : "Read in Hindi"}>
+                                    <Button 
+                                      type="text" 
+                                      size="small" 
+                                      icon={readingMessageId === `${msg.id}_hi` ? <Loader2 className={`${styles.spin}`} size={12} /> : <span style={{ fontSize: '12px' }}>🇮🇳</span>} 
+                                      onClick={() => handleReadAloudMessage(msg.id, msg.content, 'hi', true)}
+                                      className={styles.msgActionBtn}
+                                      disabled={readingMessageId !== null}
+                                    />
+                                  </Tooltip>
+                                </div>
                               )}
                             </div>
                           </div>

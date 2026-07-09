@@ -3,7 +3,7 @@ import psutil
 import time
 from flask import Blueprint, request, jsonify
 from pipeline import PipelineOrchestrator
-from services.ollama_service import check_ollama_status, query_ollama_chat
+from services.ollama_service import check_ollama_status, query_ollama_chat, query_ollama_model
 from services.chatterbox_service import check_chatterbox_status, list_models, generate_speech_audio
 from exceptions import OllamaError, ChatterboxError
 from config import Config
@@ -97,6 +97,9 @@ def generate_report():
     except Exception:
         prefs = {}
     memory_enabled = prefs.get("memory_enabled", 1) == 1
+    language = data.get("language") or prefs.get("language", "en")
+    if language not in ['en', 'hi']:
+        language = 'en'
 
     if data.get("conversation_id") and memory_enabled:
         flask_logger.info("Using persistent conversational pipeline for conversation ID: %s", conversation_id)
@@ -136,7 +139,7 @@ def generate_report():
             try:
                 tts_start = time.time()
                 static_audio_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "audio")
-                audio_result = generate_speech_audio(response_text, static_audio_dir)
+                audio_result = generate_speech_audio(response_text, static_audio_dir, language=language)
                 audio_filename = audio_result["filename"]
                 tts_latency = time.time() - tts_start
                 flask_logger.info("Chatterbox stage completed in %.2fs", tts_latency)
@@ -161,7 +164,8 @@ def generate_report():
                     text=response_text,
                     audio_path=f"/static/audio/{audio_filename}",
                     duration_seconds=audio_result.get("duration", 0.0),
-                    response_time=round(total_latency, 2)
+                    response_time=round(total_latency, 2),
+                    language=language
                 )
             except Exception as db_err:
                 flask_logger.error("Failed to save audio log to SQLite: %s", db_err)
@@ -173,6 +177,7 @@ def generate_report():
                 "audio_duration": audio_result.get("duration", 0.0),
                 "conversation_id": conversation_id,
                 "response_time": round(total_latency, 2),
+                "language": language,
                 "latencies": {
                     "ollama": round(ollama_latency, 2),
                     "chatterbox": round(tts_latency, 2),
@@ -190,7 +195,7 @@ def generate_report():
             }), 500
     else:
         flask_logger.info("Delegating to standard PipelineOrchestrator (No memory context)")
-        response_data = PipelineOrchestrator.generate_response(prompt)
+        response_data = PipelineOrchestrator.generate_response(prompt, language=language)
         
         # Save both prompt and assistant response automatically if successful
         if response_data.get("success"):
@@ -206,7 +211,8 @@ def generate_report():
                     text=response_data.get("generated_text"),
                     audio_path=response_data.get("audio_file"),
                     duration_seconds=response_data.get("audio_duration", 0.0),
-                    response_time=response_data.get("response_time", 0.0)
+                    response_time=response_data.get("response_time", 0.0),
+                    language=language
                 )
             except Exception as db_err:
                 flask_logger.error("Failed to save standard audio log to SQLite: %s", db_err)
@@ -240,4 +246,86 @@ def clear_logs():
         return jsonify({"success": True}), 200
     except Exception as e:
         flask_logger.error("Failed to clear audio logs: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@api_bp.route("/synthesize-speech", methods=["POST"])
+def synthesize_speech_endpoint():
+    """
+    On-demand speech synthesis endpoint.
+    Takes generated text, optionally translates it using Gemma 4, and synthesizes it.
+    """
+    data = request.get_json() or {}
+    text = data.get("text", "").strip()
+    language = data.get("language", "en")
+    translate = data.get("translate", False)
+    user_id = data.get("user_id", "default")
+    
+    if not text:
+        return jsonify({"success": False, "error": "No text provided"}), 400
+        
+    try:
+        start_time = time.time()
+        
+        # 1. Translate if requested
+        translated_text = text
+        ollama_time = 0.0
+        if translate and language == 'hi':
+            ollama_start = time.time()
+            try:
+                from services.ollama_service import translate_to_hindi
+                translated_text = translate_to_hindi(text)
+                ollama_time = time.time() - ollama_start
+                flask_logger.info("Translation to Hindi completed in %.2fs", ollama_time)
+            except Exception as e:
+                flask_logger.error("Hindi translation failed: %s", e)
+                return jsonify({"success": False, "error": f"Translation failed: {str(e)}"}), 500
+                
+        # 2. Synthesize using Chatterbox
+        try:
+            tts_start = time.time()
+            static_audio_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "audio")
+            audio_result = generate_speech_audio(translated_text, static_audio_dir, language=language)
+            audio_filename = audio_result["filename"]
+            tts_time = time.time() - tts_start
+            flask_logger.info("Chatterbox stage completed in %.2fs", tts_time)
+        except Exception as e:
+            flask_logger.error("Chatterbox TTS failed: %s", e)
+            return jsonify({"success": False, "error": f"Speech synthesis failed: {str(e)}"}), 500
+            
+        total_time = time.time() - start_time
+        
+        # Save to database audio_logs
+        try:
+            prefs = load_preferences(user_id)
+            voice = prefs.get("preferred_voice", "Default")
+            speed = prefs.get("speech_speed", 1.0)
+            save_audio_log(
+                id=f"clip_{int(time.time() * 1000)}",
+                voice=voice,
+                speed=speed,
+                text=translated_text,
+                audio_path=f"/static/audio/{audio_filename}",
+                duration_seconds=audio_result.get("duration", 0.0),
+                response_time=round(total_time, 2),
+                language=language
+            )
+        except Exception as db_err:
+            flask_logger.error("Failed to save on-demand audio log to SQLite: %s", db_err)
+            
+        return jsonify({
+            "success": True,
+            "audio_file": f"/static/audio/{audio_filename}",
+            "audio_duration": audio_result.get("duration", 0.0),
+            "response_time": round(total_time, 2),
+            "translated_text": translated_text if translate else None,
+            "latencies": {
+                "translation": round(ollama_time, 2),
+                "chatterbox": round(tts_time, 2),
+                "encoding": audio_result.get("encoding_time", 0.0),
+                "total": round(total_time, 2)
+            }
+        }), 200
+        
+    except Exception as e:
+        flask_logger.exception("Synthesize speech error:")
         return jsonify({"success": False, "error": str(e)}), 500

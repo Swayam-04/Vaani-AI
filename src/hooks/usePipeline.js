@@ -62,6 +62,7 @@ export function usePipeline() {
       const valError = new Error("Invalid input format. Please supply a valid JSON payload or lines containing: Missile, Velocity (mv), Pitch (pv), and Launch Time.");
       throw valError;
     }
+    parsedData.language = settings.language || 'en';
 
     // Reset state parameters
     setIsGenerating(true);

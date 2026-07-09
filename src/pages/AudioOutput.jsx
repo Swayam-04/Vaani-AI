@@ -37,11 +37,13 @@ export default function AudioOutput({ settings }) {
               audioDuration: log.duration_seconds || 0.0,
               voiceSelected: log.voice || 'Default',
               processingTime: log.response_time || 0.0,
-              responseTime: log.response_time || 0.0
+              responseTime: log.response_time || 0.0,
+              language: log.language || 'en'
             },
             settings: {
               voice: log.voice || 'Default',
-              speed: log.speed || 1.0
+              speed: log.speed || 1.0,
+              language: log.language || 'en'
             }
           }));
           setHistory(mappedLogs);
@@ -89,15 +91,17 @@ export default function AudioOutput({ settings }) {
 
   const columns = [
     {
-      title: 'Timestamp',
-      dataIndex: 'timestamp',
-      key: 'timestamp',
-      width: '120px',
-      render: (text) => (
-        <span className={styles.timeCol}>
-          <Clock size={12} className={styles.timeIcon} /> {text}
-        </span>
-      )
+      title: 'Language',
+      key: 'language',
+      width: '100px',
+      render: (_, record) => {
+        const lang = record.metrics.language || record.settings.language || 'en';
+        return (
+          <Tag color={lang === 'hi' ? 'orange' : 'cyan'}>
+            {lang === 'hi' ? 'Hindi' : 'English'}
+          </Tag>
+        );
+      }
     },
     {
       title: 'Voice / Config',
@@ -125,8 +129,11 @@ export default function AudioOutput({ settings }) {
       title: 'Duration',
       dataIndex: ['metrics', 'audioDuration'],
       key: 'duration',
-      width: '100px',
-      render: (val) => formatDuration(val)
+      width: '120px',
+      render: (val) => {
+        const num = parseFloat(val || 0);
+        return <span style={{ fontFamily: 'monospace' }}>{num.toFixed(2)}s</span>;
+      }
     },
     {
       title: 'Response Time',
@@ -190,11 +197,11 @@ export default function AudioOutput({ settings }) {
                 <p className={styles.detailText}>{selectedClip.fullText}</p>
               </div>
               <div className={styles.metaInfo}>
+                <div><strong>Language:</strong> {selectedClip.metrics.language === 'hi' ? 'Hindi' : 'English'}</div>
                 <div><strong>Model:</strong> Gemma 4</div>
                 <div><strong>Voice:</strong> {selectedClip.metrics.voiceSelected}</div>
                 <div><strong>Response Time:</strong> {(selectedClip.metrics.responseTime || selectedClip.metrics.processingTime || 0).toFixed(2)}s</div>
-                <div><strong>Audio Length:</strong> {formatDuration(selectedClip.metrics.audioDuration)}</div>
-                <div><strong>Generated At:</strong> {selectedClip.timestamp}</div>
+                <div><strong>Audio Length:</strong> {(selectedClip.metrics.audioDuration || 0).toFixed(2)}s</div>
               </div>
             </div>
           </Card>

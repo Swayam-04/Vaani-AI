@@ -157,6 +157,7 @@ function AppContent() {
                     settings={settings}
                     onAudioGenerated={handleAudioGenerated}
                     backendOnline={backendOnline}
+                    onUpdateSetting={handleUpdateSetting}
                   />
                 } 
               />

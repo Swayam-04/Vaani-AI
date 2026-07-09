@@ -25,8 +25,7 @@ export default function Settings({ settings, onUpdateSetting }) {
 
   const languageOptions = [
     { value: 'en', label: 'English (General)' },
-    { value: 'hi', label: 'Hindi (हिंदी)' },
-    { value: 'or', label: 'Odia (ଓଡ଼ିଆ)' }
+    { value: 'hi', label: 'Hindi (हिंदी)' }
   ];
 
   const modelOptions = [
@@ -90,10 +89,6 @@ export default function Settings({ settings, onUpdateSetting }) {
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}>
             <Card title={<div className={styles.cardHeader}><Globe size={16} /> <span>General Configuration</span></div>} className={styles.card}>
               <div className={styles.settingItem}>
-                <label className={styles.label}>System Language</label>
-                <Select value={settings.language} onChange={handleSelectChange('language')} options={languageOptions} className={styles.select} />
-              </div>
-              <div className={styles.settingItem} style={{ marginTop: '16px' }}>
                 <label className={styles.label}>Voice Synthesizer Profile</label>
                 <Select value={settings.voice} onChange={handleSelectChange('voice')} options={voiceOptions} className={styles.select} />
               </div>

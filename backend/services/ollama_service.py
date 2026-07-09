@@ -38,11 +38,18 @@ def query_ollama_model(prompt: str) -> str:
         payload = {
             "model": Config.MODEL_NAME,
             "prompt": prompt,
-            "stream": False
+            "stream": False,
+            "options": {}
         }
         
-        prompt_preview = prompt[:100].replace('\n', ' ')
-        logging.info("Ollama Request - Model: %s, Prompt Length: %d, Preview: '%s'", Config.MODEL_NAME, len(prompt), prompt_preview)
+        # Log the complete request details as requested
+        logging.info("=== Ollama Complete Request ===")
+        logging.info("Model: %s", payload.get("model"))
+        logging.info("Prompt Length: %d", len(prompt))
+        logging.info("Prompt: %s", prompt)
+        logging.info("Options: %s", payload.get("options"))
+        logging.info("Stream Flag: %s", payload.get("stream"))
+        logging.info("===============================")
         
         response = requests.post(
             f"{Config.OLLAMA_BASE_URL}/api/generate",
@@ -50,7 +57,14 @@ def query_ollama_model(prompt: str) -> str:
             timeout=(10, 300)
         )
         
+        # Log complete response status and body before raise_for_status()
         logging.info("Ollama Response Status: %s", response.status_code)
+        try:
+            resp_body = response.text
+            logging.info("Ollama Response Body: %s", resp_body)
+        except Exception as body_err:
+            logging.error("Failed to read response body: %s", body_err)
+            
         response.raise_for_status()
         
         try:
@@ -58,8 +72,6 @@ def query_ollama_model(prompt: str) -> str:
         except ValueError as e:
             raise OllamaError(f"Invalid JSON received from Ollama: {str(e)}\nTraceback: {traceback.format_exc()}")
             
-        logging.info("Raw Ollama JSON response: %s", json_resp)
-        
         response_text = json_resp.get("response")
         
         if response_text is None or not str(response_text).strip():
@@ -134,4 +146,33 @@ def query_ollama_chat(messages: list) -> str:
         err_msg = f"Unexpected error in query_ollama_chat: {str(e)}\nTraceback: {traceback.format_exc()}"
         logging.error(err_msg)
         raise OllamaError(err_msg)
+
+def translate_to_hindi(text: str) -> str:
+    """
+    Translates English text to Hindi using the local Gemma 4 model.
+    Prints timing and character metrics.
+    """
+    import time
+    prompt = (
+        "Translate the following text into natural Hindi.\n"
+        "Return ONLY the translated Hindi text.\n\n"
+        f"Text:\n\n{text}"
+    )
+    start_time = time.time()
+    try:
+        translated_text = query_ollama_model(prompt).strip()
+    except Exception as e:
+        logging.error("Ollama Hindi translation failed: %s", e)
+        raise e
+        
+    duration = time.time() - start_time
+    
+    print("--- Hindi Translation Step ---")
+    print(f"Original text:\n{text}")
+    print(f"Translated Hindi text:\n{translated_text}")
+    print(f"Translation time: {duration:.2f} seconds")
+    print(f"Character count: {len(translated_text)}")
+    print("-----------------------------")
+    
+    return translated_text
 

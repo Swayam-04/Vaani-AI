@@ -135,15 +135,22 @@ export default function Documents({ settings, backendOnline }) {
     }
   };
 
-  const handleReadAloud = async (doc) => {
+  const handleReadAloud = async (doc, language = 'en') => {
     handleSelectDoc(doc);
     setActiveTab('narrator');
     setGeneratingSpeech(true);
     setAudioUrl(null);
     setActiveTextToSpeak('');
     
+    const requestBody = { document_id: doc.id, read_type: "full", language: language };
+    if (language === 'hi') {
+      console.log("Hindi synthesis request:", requestBody);
+    } else {
+      console.log("English synthesis request:", requestBody);
+    }
+    
     // Stage 1: Extracting document
-    setSpeechStage("Extracting document...");
+    setSpeechStage(language === 'hi' ? "Extracting & Translating..." : "Extracting document...");
     
     try {
       // Small timeout to simulate progress steps visibly
@@ -161,7 +168,8 @@ export default function Documents({ settings, backendOnline }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           document_id: doc.id,
-          read_type: "full"
+          read_type: "full",
+          language: language
         })
       });
       
@@ -426,10 +434,25 @@ export default function Documents({ settings, backendOnline }) {
                               </div>
                             ) : (
                               <div style={{ textAlign: 'center', padding: '30px 0' }}>
-                                <Button type="primary" icon={<Volume2 size={14} />} onClick={() => handleReadAloud(activeDoc)}>
-                                  Synthesize Speech (Full Document)
-                                </Button>
-                                <div style={{ marginTop: '10px', color: '#b5c4d8', fontSize: '12px' }}>
+                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '12px' }}>
+                                  <Button 
+                                    type="primary" 
+                                    icon={<Volume2 size={14} />} 
+                                    onClick={() => handleReadAloud(activeDoc, 'en')}
+                                    style={{ minWidth: '150px' }}
+                                  >
+                                    🔊 Read in English
+                                  </Button>
+                                  <Button 
+                                    type="primary" 
+                                    icon={<span style={{ marginRight: '6px' }}>🇮🇳</span>} 
+                                    onClick={() => handleReadAloud(activeDoc, 'hi')}
+                                    style={{ minWidth: '150px' }}
+                                  >
+                                    🇮🇳 Read in Hindi
+                                  </Button>
+                                </div>
+                                <div style={{ color: '#b5c4d8', fontSize: '12px' }}>
                                   Generates audio using Chatterbox and enables download.
                                 </div>
                               </div>

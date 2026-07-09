@@ -103,12 +103,17 @@ def db_init():
             text TEXT,
             audio_path TEXT,
             duration_seconds REAL,
-            response_time REAL
+            response_time REAL,
+            language TEXT
         );
         """)
-        # Migrate: add response_time column if missing (for existing databases)
+        # Migrate: add response_time and language columns if missing (for existing databases)
         try:
             conn.execute("ALTER TABLE audio_logs ADD COLUMN response_time REAL")
+        except Exception:
+            pass  # Column already exists
+        try:
+            conn.execute("ALTER TABLE audio_logs ADD COLUMN language TEXT")
         except Exception:
             pass  # Column already exists
     memory_logger.info("Database initialization complete.")
@@ -219,24 +224,24 @@ def save_preferences(user_id="default", **kwargs):
 
 # --- AUDIO LOGS HELPERS ---
 
-def save_audio_log(id, voice, speed, text, audio_path, duration_seconds, response_time=0.0, timestamp=None):
+def save_audio_log(id, voice, speed, text, audio_path, duration_seconds, response_time=0.0, language='en', timestamp=None):
     from datetime import datetime
     if not timestamp:
         timestamp = datetime.now().strftime('%I:%M:%S %p') # e.g. '11:42:15 PM'
     with get_db() as conn:
         conn.execute(
             """
-            INSERT OR REPLACE INTO audio_logs (id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO audio_logs (id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time, language)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time)
+            (id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time, language)
         )
     return True
 
 def get_audio_logs():
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time FROM audio_logs ORDER BY timestamp DESC"
+            "SELECT id, timestamp, voice, speed, text, audio_path, duration_seconds, response_time, language FROM audio_logs ORDER BY timestamp DESC"
         ).fetchall()
         logs = [dict(row) for row in rows]
         

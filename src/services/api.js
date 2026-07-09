@@ -90,3 +90,43 @@ export async function generateMissileReport(data) {
     throw handleServiceError(error);
   }
 }
+
+/**
+ * Synthesizes speech on-demand (optionally translating from English to Hindi first).
+ * @param {string} text - Input text
+ * @param {string} language - Target language ('en' or 'hi')
+ * @param {boolean} translate - Whether to translate English to Hindi
+ * @returns {Promise<Object>} Synthesis details
+ */
+export async function synthesizeSpeech(text, language, translate = false) {
+  try {
+    const response = await fetch(`${BASE_URL}/synthesize-speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, language, translate }),
+    });
+
+    if (!response.ok) {
+      let errMsg = `Speech synthesis error (${response.status})`;
+      try {
+        const errJson = await response.json();
+        if (errJson && errJson.error) {
+          errMsg = errJson.error;
+        }
+      } catch (e) {
+        try {
+          const errText = await response.text();
+          if (errText) errMsg = errText;
+        } catch (e2) {}
+      }
+      throw new Error(errMsg);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Speech synthesis failed:", error);
+    throw error;
+  }
+}

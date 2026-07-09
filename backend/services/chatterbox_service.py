@@ -2,52 +2,169 @@ import os
 import time
 import uuid
 import threading
+from pathlib import Path
 from config import Config
 from logger import chatterbox_logger
 from exceptions import ChatterboxError
 
-# Global state for the singleton model
-_chatterbox_model = None
+# Global state for both single language packs
+_chatterbox_model_en = None
+_chatterbox_model_hi = None
 _model_lock = threading.Lock()
 
 def check_chatterbox_status() -> bool:
     """Compatibility wrapper for health check."""
     return health()
 
-def initialize():
-    """Load the Chatterbox model into memory if not already loaded."""
-    global _chatterbox_model
-    with _model_lock:
-        if _chatterbox_model is not None:
-            return
+def get_latest_snapshot(repo_name: str) -> Path:
+    from pathlib import Path
+    import os
+    cache_base = Path(os.path.expanduser("~")) / ".cache" / "huggingface" / "hub"
+    repo_dir = cache_base / f"models--{repo_name.replace('/', '--')}"
+    snapshots_dir = repo_dir / "snapshots"
+    if snapshots_dir.exists():
+        snapshots = sorted(list(snapshots_dir.iterdir()))
+        if snapshots:
+            return snapshots[-1]
+    return None
 
-        chatterbox_logger.info("Initializing Chatterbox TTS Model: %s", Config.CHATTERBOX_MODEL)
-        try:
-            import torch
-            from chatterbox import ChatterboxTTS
-            
-            device = getattr(Config, 'CHATTERBOX_DEVICE', 'cuda')
-            if device == 'cuda' and not torch.cuda.is_available():
-                device = 'cpu'
-                chatterbox_logger.warning("CUDA not available, falling back to CPU for Chatterbox")
-            
-            _chatterbox_model = ChatterboxTTS.from_pretrained(device)
-            _chatterbox_initialized = True
-            chatterbox_logger.info("Chatterbox TTS initialized on device: %s", device)
-        except Exception as e:
-            chatterbox_logger.exception("Failed to initialize Chatterbox TTS: %s", str(e))
-            raise ChatterboxError(f"Initialization failed: {str(e)}")
+def initialize():
+    """Load both Chatterbox English and Hindi models into memory."""
+    global _chatterbox_model_en, _chatterbox_model_hi
+    with _model_lock:
+        device = getattr(Config, 'CHATTERBOX_DEVICE', 'cuda')
+        import torch
+        if device == 'cuda' and not torch.cuda.is_available():
+            device = 'cpu'
+
+        # 1. Load English single language pack
+        if _chatterbox_model_en is None:
+            chatterbox_logger.info("Initializing English single language pack...")
+            try:
+                from chatterbox import ChatterboxTTS
+                from pathlib import Path
+                from huggingface_hub import hf_hub_download
+
+                # Resolve locally if possible
+                local_dir = get_latest_snapshot("ResembleAI/chatterbox")
+                if local_dir:
+                    _chatterbox_model_en = ChatterboxTTS.from_local(local_dir, device)
+                else:
+                    _chatterbox_model_en = ChatterboxTTS.from_pretrained(device)
+                chatterbox_logger.info("English single language pack loaded successfully!")
+            except Exception as e:
+                chatterbox_logger.error("Failed to load English language pack: %s", e)
+
+        # 2. Load Hindi single language pack
+        if _chatterbox_model_hi is None:
+            chatterbox_logger.info("Initializing Hindi single language pack...")
+            try:
+                from chatterbox.mtl_tts import ChatterboxMultilingualTTS, T3, S3Gen, VoiceEncoder, MTLTokenizer, Conditionals
+                from chatterbox.models.t3.modules.t3_config import T3Config
+                from safetensors.torch import load_file as load_safetensors
+                from huggingface_hub import snapshot_download
+                from pathlib import Path
+
+                # Try local first
+                ckpt_dir = get_latest_snapshot("ResembleAI/Chatterbox-Multilingual-hi")
+                if not ckpt_dir:
+                    try:
+                        ckpt_dir = Path(snapshot_download(
+                            repo_id="ResembleAI/Chatterbox-Multilingual-hi",
+                            repo_type="model",
+                            revision="main",
+                            allow_patterns=["ve.pt", "t3_hi.safetensors", "s3gen.pt", "grapheme_mtl_merged_expanded_v1.json", "conds.pt"],
+                            local_files_only=True
+                        ))
+                    except Exception:
+                        ckpt_dir = Path(snapshot_download(
+                            repo_id="ResembleAI/Chatterbox-Multilingual-hi",
+                            repo_type="model",
+                            revision="main",
+                            allow_patterns=["ve.pt", "t3_hi.safetensors", "s3gen.pt", "grapheme_mtl_merged_expanded_v1.json", "conds.pt"]
+                        ))
+
+                # Load generic English components for S3Gen and VoiceEncoder if missing
+                en_dir = get_latest_snapshot("ResembleAI/chatterbox")
+                if not en_dir:
+                    from huggingface_hub import hf_hub_download
+                    en_local_file = hf_hub_download(repo_id="ResembleAI/chatterbox", filename="ve.safetensors")
+                    en_dir = Path(en_local_file).parent
+
+                map_location = torch.device('cpu') if device in ["cpu", "mps"] else None
+
+                ve = VoiceEncoder()
+                ve.load_state_dict(load_safetensors(en_dir / "ve.safetensors"))
+                ve.to(device).eval()
+
+                s3gen = S3Gen()
+                s3gen.load_state_dict(load_safetensors(en_dir / "s3gen.safetensors"), strict=False)
+                s3gen.to(device).eval()
+
+                # Load T3 Hindi weights and MTLTokenizer configuration
+                t3 = T3(T3Config.multilingual())
+                t3_state = load_safetensors(ckpt_dir / "t3_hi.safetensors")
+                if "model" in t3_state.keys():
+                    t3_state = t3_state["model"][0]
+                t3.load_state_dict(t3_state)
+                t3.to(device).eval()
+
+                tokenizer = MTLTokenizer(str(ckpt_dir / "grapheme_mtl_merged_expanded_v1.json"))
+
+                conds = None
+                if (ckpt_dir / "conds.pt").exists():
+                    conds = Conditionals.load(ckpt_dir / "conds.pt", map_location=map_location).to(device)
+                elif (en_dir / "conds.pt").exists():
+                    conds = Conditionals.load(en_dir / "conds.pt", map_location=map_location).to(device)
+
+                _chatterbox_model_hi = ChatterboxMultilingualTTS(t3, s3gen, ve, tokenizer, device, conds=conds)
+                
+                # Check if loaded conditionals are missing speech prompt tokens (common when reusing English conds)
+                if _chatterbox_model_hi.conds is None or _chatterbox_model_hi.conds.t3.cond_prompt_speech_tokens is None:
+                    chatterbox_logger.info("Hindi conditionals missing speech tokens. Preparing from silent dummy WAV...")
+                    import tempfile
+                    import wave
+                    import struct
+                    
+                    fd, tmp_wav_path = tempfile.mkstemp(suffix=".wav")
+                    try:
+                        os.close(fd)
+                        sample_rate = 16000
+                        duration = 1.0
+                        num_samples = int(sample_rate * duration)
+                        with wave.open(tmp_wav_path, 'wb') as wav_file:
+                            wav_file.setnchannels(1)
+                            wav_file.setsampwidth(2)
+                            wav_file.setframerate(sample_rate)
+                            for _ in range(num_samples):
+                                wav_file.writeframesraw(struct.pack('<h', 0))
+                                
+                        _chatterbox_model_hi.prepare_conditionals(tmp_wav_path)
+                        chatterbox_logger.info("Hindi conditionals prepared successfully using dummy reference.")
+                    finally:
+                        try:
+                            os.remove(tmp_wav_path)
+                        except Exception:
+                            pass
+                
+                chatterbox_logger.info("Hindi single language pack loaded successfully!")
+            except Exception as e:
+                chatterbox_logger.error("Failed to load Hindi language pack: %s", e)
 
 def health() -> bool:
-    """Check if Chatterbox is initialized and ready"""
+    """Check if both language packs are loaded."""
     with _model_lock:
-        return _chatterbox_model is not None
+        return _chatterbox_model_en is not None and _chatterbox_model_hi is not None
 
 def list_models() -> list:
-    """Return available model info"""
-    if not health():
-        return []
-    return [{"id": Config.CHATTERBOX_MODEL, "device": getattr(Config, 'CHATTERBOX_DEVICE', 'cuda')}]
+    """Return available language pack details."""
+    models = []
+    device = getattr(Config, 'CHATTERBOX_DEVICE', 'cuda')
+    if _chatterbox_model_en is not None:
+        models.append({"id": "en", "name": "English Pack", "device": device})
+    if _chatterbox_model_hi is not None:
+        models.append({"id": "hi", "name": "Hindi Pack", "device": device})
+    return models
 
 import re
 
@@ -107,9 +224,9 @@ def chunk_text_for_tts(text: str) -> list:
         chunks.append(" ".join(current_chunk))
     return chunks
 
-def generate_speech_audio(text: str, output_dir: str) -> dict:
+def generate_speech_audio(text: str, output_dir: str, language: str = 'en') -> dict:
     """Generate speech using Chatterbox TTS and save to MP3 with auto-chunking & cleaning"""
-    global _chatterbox_model
+    global _chatterbox_model_en, _chatterbox_model_hi
     
     start_time = time.time()
     
@@ -119,11 +236,13 @@ def generate_speech_audio(text: str, output_dir: str) -> dict:
         raise ChatterboxError("No readable text found.")
         
     with _model_lock:
-        if _chatterbox_model is None:
-            chatterbox_logger.warning("Chatterbox model not initialized. Initializing now...")
+        model = _chatterbox_model_hi if language == 'hi' else _chatterbox_model_en
+        if model is None:
+            chatterbox_logger.warning("Chatterbox model for %s not initialized. Initializing now...", language)
             initialize()
-            if _chatterbox_model is None:
-                raise ChatterboxError("Chatterbox returned an error: Model initialization failed.")
+            model = _chatterbox_model_hi if language == 'hi' else _chatterbox_model_en
+            if model is None:
+                raise ChatterboxError(f"Chatterbox returned an error: Model initialization failed for language {language}.")
                 
     try:
         import torch
@@ -156,7 +275,10 @@ def generate_speech_audio(text: str, output_dir: str) -> dict:
                 
                 # Chatterbox generation
                 try:
-                    audio_tensor = _chatterbox_model.generate(sentence)
+                    if language == 'hi':
+                        audio_tensor = model.generate(sentence, language_id='hi')
+                    else:
+                        audio_tensor = model.generate(sentence)
                 except Exception as gen_err:
                     chatterbox_logger.error("Chatterbox returned an error during synthesis: %s", gen_err)
                     raise ChatterboxError(f"Chatterbox returned an error: {str(gen_err)}")

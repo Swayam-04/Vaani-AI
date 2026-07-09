@@ -288,12 +288,32 @@ def read_document():
         if len(text_to_read) > 50000:
             return jsonify({"success": False, "error": "Document exceeds maximum size (50,000 characters)."}), 413
             
+        # Get language preference
+        try:
+            from memory.memory import load_preferences, save_audio_log
+            prefs = load_preferences("default")
+        except Exception:
+            prefs = {}
+        language = data.get("language") or prefs.get("language", "en")
+        if language not in ['en', 'hi']:
+            language = 'en'
+
+        # Translate to Hindi if requested
+        if language == 'hi':
+            flask_logger.info("Translating document content to Hindi using Gemma 4...")
+            try:
+                from services.ollama_service import translate_to_hindi
+                text_to_read = translate_to_hindi(text_to_read)
+            except Exception as e:
+                flask_logger.error("Document translation to Hindi failed: %s", e)
+                return jsonify({"success": False, "error": f"Translation failed: {str(e)}"}), 500
+
         # Call Chatterbox TTS (it will handle cleaning, chunking, and merging internally)
         static_audio_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "audio")
         
         # Capture generation metrics and exceptions
         try:
-            audio_result = generate_speech_audio(text_to_read, static_audio_dir)
+            audio_result = generate_speech_audio(text_to_read, static_audio_dir, language=language)
         except Exception as tts_err:
             flask_logger.exception("Chatterbox TTS call failed:")
             err_msg = str(tts_err)
@@ -308,8 +328,6 @@ def read_document():
         
         # Save to database audio_logs
         try:
-            from memory.memory import load_preferences, save_audio_log
-            prefs = load_preferences("default")
             voice = prefs.get("preferred_voice", "Default")
             speed = prefs.get("speech_speed", 1.0)
             save_audio_log(
@@ -318,7 +336,8 @@ def read_document():
                 speed=speed,
                 text=text_to_read,
                 audio_path=audio_url,
-                duration_seconds=audio_result.get("duration", 0.0)
+                duration_seconds=audio_result.get("duration", 0.0),
+                language=language
             )
         except Exception as db_err:
             flask_logger.error("Failed to save read-document audio log to SQLite: %s", db_err)

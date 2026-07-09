@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import TextInput from '../components/TextInput/TextInput';
 import AudioPlayer from '../components/AudioPlayer/AudioPlayer';
+import { synthesizeSpeech } from '../services/api';
 import styles from './Generator.module.css';
 
 export default function Generator({
@@ -25,7 +26,8 @@ export default function Generator({
   pipeline,
   settings,
   onAudioGenerated,
-  backendOnline
+  backendOnline,
+  onUpdateSetting
 }) {
   const {
     isGenerating,
@@ -89,9 +91,97 @@ export default function Generator({
       });
   };
 
+  const [activeAudioUrl, setActiveAudioUrl] = useState(null);
+  const [activeAudioText, setActiveAudioText] = useState('');
+  const [synthesisLoading, setSynthesisLoading] = useState(false);
+  const [synthesisLang, setSynthesisLang] = useState(null); // 'en' or 'hi'
+  const [generatedAudios, setGeneratedAudios] = useState({ en: null, hi: null });
+
+  // Sync pipeline generation output to local player states
+  useEffect(() => {
+    if (audioUrl) {
+      setGeneratedAudios({
+        en: audioUrl,
+        hi: null
+      });
+      setActiveAudioUrl(audioUrl);
+      setActiveAudioText(decodedText);
+    } else {
+      setGeneratedAudios({ en: null, hi: null });
+      setActiveAudioUrl(null);
+      setActiveAudioText('');
+    }
+  }, [audioUrl, decodedText]);
+
+  const handleListenEn = async () => {
+    if (generatedAudios.en) {
+      setActiveAudioUrl(generatedAudios.en);
+      setActiveAudioText(decodedText);
+      return;
+    }
+    try {
+      setSynthesisLoading(true);
+      setSynthesisLang('en');
+      const res = await synthesizeSpeech(decodedText, 'en', false);
+      if (res && res.success) {
+        const fullUrl = res.audio_file.startsWith('http') ? res.audio_file : `http://127.0.0.1:5000${res.audio_file}`;
+        setGeneratedAudios(prev => ({ ...prev, en: fullUrl }));
+        setActiveAudioUrl(fullUrl);
+        setActiveAudioText(decodedText);
+      }
+    } catch (err) {
+      notification.error({
+        message: 'English Synthesis Failed',
+        description: err.message || 'Failed to synthesize English speech.',
+        placement: 'bottomRight'
+      });
+    } finally {
+      setSynthesisLoading(false);
+      setSynthesisLang(null);
+    }
+  };
+
+  const handleListenHi = async () => {
+    if (generatedAudios.hi) {
+      setActiveAudioUrl(generatedAudios.hi.audioUrl);
+      setActiveAudioText(generatedAudios.hi.translatedText);
+      return;
+    }
+    const requestBody = { text: decodedText, language: 'hi', translate: true };
+    console.log("Hindi synthesis request:", requestBody);
+    try {
+      setSynthesisLoading(true);
+      setSynthesisLang('hi');
+      const res = await synthesizeSpeech(decodedText, 'hi', true);
+      if (res && res.success) {
+        const fullUrl = res.audio_file.startsWith('http') ? res.audio_file : `http://127.0.0.1:5000${res.audio_file}`;
+        setGeneratedAudios(prev => ({
+          ...prev,
+          hi: { audioUrl: fullUrl, translatedText: res.translated_text || decodedText }
+        }));
+        setActiveAudioUrl(fullUrl);
+        setActiveAudioText(res.translated_text || decodedText);
+      }
+    } catch (err) {
+      notification.error({
+        message: 'Hindi Synthesis Failed',
+        description: err.message || 'Failed to translate and synthesize Hindi speech.',
+        placement: 'bottomRight'
+      });
+    } finally {
+      setSynthesisLoading(false);
+      setSynthesisLang(null);
+    }
+  };
+
   const handleClear = () => {
     setText('');
     clear();
+    setActiveAudioUrl(null);
+    setActiveAudioText('');
+    setSynthesisLoading(false);
+    setSynthesisLang(null);
+    setGeneratedAudios({ en: null, hi: null });
   };
 
   const handleGenerate = async () => {
@@ -165,8 +255,26 @@ export default function Generator({
           </div>
           
           <div className={styles.editorMetaTags}>
-            <span className={styles.metaBadge}>
-              <Globe size={12} /> Language: {settings.language === 'hi' ? 'Hindi' : settings.language === 'or' ? 'Odia' : 'English'}
+            <span className={styles.metaBadge} style={{ padding: '2px 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Globe size={12} />
+              <span style={{ fontSize: '12px' }}>Lang:</span>
+              <select
+                value={settings.language}
+                onChange={(e) => onUpdateSetting('language', e.target.value)}
+                disabled={isGenerating}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--accent-color, #1890ff)',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                <option value="en" style={{ background: '#1f1f1f', color: '#fff' }}>English</option>
+                <option value="hi" style={{ background: '#1f1f1f', color: '#fff' }}>Hindi</option>
+              </select>
             </span>
             <span className={styles.metaBadge}>
               Voice: {settings.voice || 'Default'}
@@ -240,7 +348,12 @@ export default function Generator({
             <Card 
               title={
                 <div className={styles.pipelineHeader}>
-                  <span>Live Synthesis Pipeline</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>Live Synthesis Pipeline</span>
+                    <span style={{ fontSize: '11px', background: 'rgba(24, 144, 255, 0.15)', color: '#1890ff', padding: '1px 6px', borderRadius: '4px', fontWeight: 555 }}>
+                      {settings.language === 'hi' ? 'Hindi Pack' : 'English Pack'}
+                    </span>
+                  </div>
                   <div className={styles.globalTimer}>
                     <Clock size={13} className={styles.timerIcon} />
                     <span>Processing Time: <span className={styles.timerVal}>{formatElapsed(elapsedTime)}</span></span>
@@ -323,22 +436,22 @@ export default function Generator({
                   <div className={styles.summaryMetrics}>
                     <div className={styles.metricItem}>
                       <span className={styles.metricLabel}>⚡ Response Time</span>
-                      <span className={styles.metricValue}>{metrics.responseTime || metrics.processingTime} sec</span>
+                      <span className={styles.metricValue}>{(metrics.responseTime || metrics.processingTime || 0).toFixed(2)} sec</span>
                     </div>
                     <div className={styles.metricDivider} />
                     <div className={styles.metricItem}>
                       <span className={styles.metricLabel}>🧠 Gemma 4</span>
-                      <span className={styles.metricValue}>{metrics.llmTime} sec</span>
+                      <span className={styles.metricValue}>{(metrics.llmTime || 0).toFixed(2)} sec</span>
                     </div>
                     <div className={styles.metricDivider} />
                     <div className={styles.metricItem}>
                       <span className={styles.metricLabel}>🔊 Chatterbox</span>
-                      <span className={styles.metricValue}>{metrics.ttsTime} sec</span>
+                      <span className={styles.metricValue}>{(metrics.ttsTime || 0).toFixed(2)} sec</span>
                     </div>
                     <div className={styles.metricDivider} />
                     <div className={styles.metricItem}>
                       <span className={styles.metricLabel}>💿 MP3 Encoding</span>
-                      <span className={styles.metricValue}>{metrics.encodingTime || 0} sec</span>
+                      <span className={styles.metricValue}>{(metrics.encodingTime || 0).toFixed(2)} sec</span>
                     </div>
                     <div className={styles.metricDivider} />
                     <div className={styles.metricItem}>
@@ -353,9 +466,33 @@ export default function Generator({
         )}
       </AnimatePresence>
 
+      {/* Two playbacks select on demand */}
+      {decodedText && !isGenerating && (
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', margin: '24px 0 16px 0' }}>
+          <Button
+            type={activeAudioUrl === generatedAudios.en && activeAudioUrl ? 'primary' : 'default'}
+            icon={synthesisLoading && synthesisLang === 'en' ? <Loader2 className={styles.spin} size={15} /> : <Globe size={15} />}
+            onClick={handleListenEn}
+            disabled={synthesisLoading}
+            style={{ minWidth: '170px', height: '42px', borderRadius: '8px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            {synthesisLoading && synthesisLang === 'en' ? 'Processing...' : '🔊 Listen in English'}
+          </Button>
+          <Button
+            type={generatedAudios.hi && activeAudioUrl === generatedAudios.hi.audioUrl ? 'primary' : 'default'}
+            icon={synthesisLoading && synthesisLang === 'hi' ? <Loader2 className={styles.spin} size={15} /> : <Sparkles size={15} />}
+            onClick={handleListenHi}
+            disabled={synthesisLoading}
+            style={{ minWidth: '170px', height: '42px', borderRadius: '8px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            {synthesisLoading && synthesisLang === 'hi' ? 'Translating...' : '🇮🇳 Listen in Hindi'}
+          </Button>
+        </div>
+      )}
+
       {/* Output Audio player deck */}
       <AnimatePresence>
-        {audioUrl && !isGenerating && (
+        {activeAudioUrl && !isGenerating && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -363,9 +500,9 @@ export default function Generator({
             transition={{ duration: 0.3 }}
           >
             <AudioPlayer 
-              audioUrl={audioUrl}
+              audioUrl={activeAudioUrl}
               autoPlay={settings.autoPlay}
-              text={decodedText || text}
+              text={activeAudioText}
             />
           </motion.div>
         )}

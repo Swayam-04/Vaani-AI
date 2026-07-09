@@ -65,14 +65,25 @@ export default function DocumentCard({ doc, onSummarize, onAsk, onRead, onDelete
             </Button>
           </Tooltip>
           
-          <Tooltip title="Read the document text aloud" placement="top">
+          <Tooltip title="Read text aloud in English" placement="top">
             <Button 
               type="default" 
               icon={<Volume2 size={13} />} 
-              onClick={(e) => { e.stopPropagation(); onRead(doc); }}
+              onClick={(e) => { e.stopPropagation(); onRead(doc, 'en'); }}
               className={styles.actionBtn}
             >
-              Read
+              Read En
+            </Button>
+          </Tooltip>
+          
+          <Tooltip title="Translate and read in Hindi" placement="top">
+            <Button 
+              type="default" 
+              icon={<span style={{ marginRight: '4px', fontSize: '12px' }}>🇮🇳</span>} 
+              onClick={(e) => { e.stopPropagation(); onRead(doc, 'hi'); }}
+              className={styles.actionBtn}
+            >
+              Read Hi
             </Button>
           </Tooltip>
           
