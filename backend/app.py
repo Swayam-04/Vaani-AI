@@ -6,6 +6,30 @@ if sys.platform.startswith('win'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
+def force_utf8_logging():
+    """Traverse all active logging handlers and force them to output to the UTF-8 wrapped streams"""
+    import logging
+    # Traverse through all child loggers
+    for logger_name in list(logging.root.manager.loggerDict.keys()):
+        logger = logging.getLogger(logger_name)
+        for handler in logger.handlers:
+            if isinstance(handler, logging.StreamHandler):
+                if handler.stream in [sys.stderr, sys.__stderr__]:
+                    handler.stream = sys.stderr
+                elif handler.stream in [sys.stdout, sys.__stdout__]:
+                    handler.stream = sys.stdout
+            if isinstance(handler, logging.FileHandler):
+                handler.encoding = 'utf-8'
+    # Traverse through the root logger handlers
+    for handler in logging.root.handlers:
+        if isinstance(handler, logging.StreamHandler):
+            if handler.stream in [sys.stderr, sys.__stderr__]:
+                handler.stream = sys.stderr
+            elif handler.stream in [sys.stdout, sys.__stdout__]:
+                handler.stream = sys.stdout
+        if isinstance(handler, logging.FileHandler):
+            handler.encoding = 'utf-8'
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from routes import api_bp, chat_bp, documents_bp
@@ -24,6 +48,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 app.register_blueprint(api_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(documents_bp)
+
+# Force UTF-8 stream handling on all loggers initialized so far
+force_utf8_logging()
 
 # Initialize SQLite database tables
 db_init()
@@ -66,5 +93,8 @@ if __name__ == "__main__":
     
     # Task 1: Startup Manager checks daemons before Flask binds
     wait_for_services()
+    
+    # Force UTF-8 stream handling on all initialized loggers
+    force_utf8_logging()
     
     app.run(host="127.0.0.1", port=5000, debug=False)
